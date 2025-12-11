@@ -6,7 +6,6 @@
  * 使用现代化游戏架构
  */
 import { ref, computed, onUnmounted } from 'vue'
-import StartScreen from './components/StartScreen.vue'
 import CustomerCard from './components/CustomerCard.vue'
 import SoundPanel from './components/SoundPanel.vue'
 import UpgradePanel from './components/UpgradePanel.vue'
@@ -466,11 +465,8 @@ function handleApplianceClick(applianceId) {
 </script>
 
 <template>
-  <!-- 开始界面 -->
-  <StartScreen v-if="!state.isStarted" @start="handleStartGame" />
-  
   <!-- 游戏主容器 -->
-  <div v-else class="game-container">
+  <div class="game-container">
     <!-- 顶部状态栏 -->
     <StatusBar
       :money="state.money"

@@ -12,7 +12,7 @@ import { appliances } from '../data/appliances'
 // ========== 游戏核心状态 ==========
 const state = reactive({
   // 游戏进程状态
-  isStarted: false,      // 是否已开始游戏
+  isStarted: true,       // 是否已开始游戏（直接进入游戏）
   isOpen: false,         // 是否营业中
   isPaused: false,       // 是否暂停
   
