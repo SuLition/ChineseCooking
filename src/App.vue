@@ -81,7 +81,11 @@ const {
   toggleCustomerSpawn,
   debugSpawnCustomer,
   debugSpawnDish,
-  dishList
+  dishList,
+  
+  // 随机事件系统
+  randomEventsSystem,
+  bugEatenIngredientId
 } = useGame()
 
 // 只显示用户拥有库存的食材
@@ -113,6 +117,17 @@ function initPlates() {
   }))
 }
 initPlates()
+
+// 调料撒事件处理
+function handleSeasoningDrop(seasoning) {
+  const result = randomEventsSystem.checkSeasoningSpill(seasoning)
+  if (result.triggered) {
+    // 撒掉部分调料
+    const store = useGameStore()
+    store.spillSeasoning(seasoning.id, result.spillAmount)
+  }
+  return result
+}
 
 // ========== 初始化拖拽系统 ==========
 const GRID_COLS = 10
@@ -184,6 +199,8 @@ const {
   userApplianceLayout,
   showToast,
   addItemToPlate,
+  onIngredientDragStart: (ingredient) => randomEventsSystem.checkIngredientDrop(ingredient),
+  onSeasoningDrop: handleSeasoningDrop,
   GRID_COLS,
   GRID_ROWS
 })
@@ -295,6 +312,17 @@ function updatePlateWashing() {
       const progress = Math.min(100, (elapsed / plate.washDuration) * 100)
       plate.washProgress = progress
       
+      // 检查是否触发盘子摔碎事件（每次更新都有机会触发）
+      if (randomEventsSystem.checkPlateBreak(index)) {
+        // 盘子碎了，移除这个盘子
+        plates.value.splice(index, 1)
+        // 减少用户盘子数量
+        if (userData.plates > 0) {
+          userData.plates--
+        }
+        return
+      }
+      
       // 清洗完成
       if (progress >= 100) {
         plates.value[index] = {
@@ -322,6 +350,16 @@ function handleServeDish(plateIndex, customer) {
   const plate = plates.value[plateIndex]
   if (!plate || plate.status !== 'hasDish' || !plate.dish) {
     showToast('❌ 盘子里没有菜品', 'error')
+    return
+  }
+  
+  // 检查是否触发菜撒事件
+  if (randomEventsSystem.checkPlateSpill(plate, plateIndex)) {
+    // 菜撒了，盘子变为待清洗状态
+    plates.value[plateIndex] = {
+      status: 'dirty',
+      dish: null
+    }
     return
   }
   
@@ -462,6 +500,21 @@ function handleApplianceClick(applianceId) {
   clickAppliance(applianceId)
 }
 
+// 修理厨具
+function handleRepairAppliance(applianceId) {
+  randomEventsSystem.repairAppliance(applianceId)
+}
+
+// 处理专属事件动作
+function handleSpecialAction(applianceId) {
+  randomEventsSystem.handleSpecialEventAction(applianceId)
+}
+
+// 获取厨具事件配置
+function getEventConfig(applianceId) {
+  return randomEventsSystem.getApplianceEventConfig(applianceId)
+}
+
 </script>
 
 <template>
@@ -563,6 +616,7 @@ function handleApplianceClick(applianceId) {
                   :key="ing.id"
                   :ingredient="ing"
                   :stock="inventory[ing.id] || 0"
+                  :bug-eaten="bugEatenIngredientId === ing.id"
                   @dragstart="handleDragStart($event, ing.id)"
                   @dragend="handleDragEnd"
                 />
@@ -647,6 +701,9 @@ function handleApplianceClick(applianceId) {
                       @clear="handleClearAppliance"
                       @ingredient-drag-start="handleApplianceIngredientDragStart"
                       @ingredient-drag-end="handleApplianceIngredientDragEnd"
+                      @repair="handleRepairAppliance"
+                      @special-action="handleSpecialAction"
+                      :event-config="getEventConfig(app.id)"
                     />
                   </div>
                 </div>

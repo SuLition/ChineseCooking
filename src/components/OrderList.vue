@@ -52,14 +52,16 @@ function getRecipeTypeClass(type) {
         <!-- 所需配方 -->
         <div class="order-ingredients">
           <div class="ingredients-list">
-            <span 
+            <div 
               v-for="(item, i) in currentCustomer.recipe" 
               :key="i"
-              class="ingredient-tag"
+              class="ingredient-item"
               :class="getRecipeTypeClass(item.type)"
+              :title="getRecipeItemInfo(item).name"
             >
-              {{ getRecipeItemInfo(item).icon }} {{ getRecipeItemInfo(item).name }}
-            </span>
+              <img v-if="getRecipeItemInfo(item).image" :src="getRecipeItemInfo(item).image" class="ingredient-img" />
+              <span v-else class="ingredient-icon">{{ getRecipeItemInfo(item).icon }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -86,14 +88,16 @@ function getRecipeTypeClass(type) {
         <!-- 所需配方 -->
         <div class="order-ingredients">
           <div class="ingredients-list">
-            <span 
+            <div 
               v-for="(item, i) in customer.recipe" 
               :key="i"
-              class="ingredient-tag"
+              class="ingredient-item"
               :class="getRecipeTypeClass(item.type)"
+              :title="getRecipeItemInfo(item).name"
             >
-              {{ getRecipeItemInfo(item).icon }}
-            </span>
+              <img v-if="getRecipeItemInfo(item).image" :src="getRecipeItemInfo(item).image" class="ingredient-img" />
+              <span v-else class="ingredient-icon">{{ getRecipeItemInfo(item).icon }}</span>
+            </div>
           </div>
         </div>
         
@@ -209,13 +213,13 @@ function getRecipeTypeClass(type) {
 .order-ingredients {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
-  padding: 8px;
+  padding: 6px 0;
 }
 
 .ingredients-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
 }
 
 .ingredient-tag {
@@ -227,23 +231,40 @@ function getRecipeTypeClass(type) {
   color: var(--text-light);
 }
 
-/* 配方类型颜色 */
-.ingredient-tag.recipe-prepared {
-  background: rgba(74, 222, 128, 0.2);
+/* 配方食材项（图片版） */
+.ingredient-item {
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--light-wood);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ingredient-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.ingredient-icon {
+  font-size: 22px;
+}
+
+/* 配方类型边框颜色 */
+.ingredient-item.recipe-prepared {
   border-color: var(--success-green);
-  color: var(--success-green);
 }
 
-.ingredient-tag.recipe-seasoning {
-  background: rgba(251, 146, 60, 0.2);
+.ingredient-item.recipe-seasoning {
   border-color: var(--warning-orange);
-  color: var(--warning-orange);
 }
 
-.ingredient-tag.recipe-raw {
-  background: rgba(139, 92, 246, 0.2);
+.ingredient-item.recipe-raw {
   border-color: #a78bfa;
-  color: #a78bfa;
 }
 
 .order-patience {

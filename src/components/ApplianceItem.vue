@@ -13,13 +13,14 @@ const props = defineProps({
   locked: { type: Boolean, default: false },
   unlockLevel: { type: Number, default: 1 },
   draggingIngredient: { type: String, default: null },
-  draggingIngredientType: { type: String, default: null },  // 新增：拖拽物品的类型 (ingredient/prepared/seasoning)
+  draggingIngredientType: { type: String, default: null },
   draggingPlate: { type: Boolean, default: false },
   allowedAppliances: { type: Array, default: () => [] },
-  canProcess: { type: Boolean, default: false }
+  canProcess: { type: Boolean, default: false },
+  eventConfig: { type: Object, default: null }  // 专属事件配置
 })
 
-const emit = defineEmits(['dragover', 'dragleave', 'drop', 'start-cooking', 'clear', 'click', 'ingredient-drag-start', 'ingredient-drag-end'])
+const emit = defineEmits(['dragover', 'dragleave', 'drop', 'start-cooking', 'clear', 'click', 'ingredient-drag-start', 'ingredient-drag-end', 'repair', 'special-action'])
 
 // 获取厨具数据
 const applianceData = computed(() => appliances[props.applianceId])
@@ -118,6 +119,10 @@ function getDisplayName() {
   
   if (appliance.status === 'burned') return burnedText.value
   if (appliance.status === 'cleaning') return '🧹 清理中...'
+  if (appliance.status === 'broken') return '🔧 损坏了!'
+  if (appliance.status === 'repairing') return '🔧 修理中...'
+  // 专属事件状态
+  if (props.eventConfig) return props.eventConfig.icon + ' ' + props.eventConfig.name
   if (appliance.status === 'processing') return '处理中...'
   if (appliance.status === 'done') {
     // 显示成品菜名称
@@ -428,6 +433,46 @@ function handleSlotDragEnd(e) {
       <span>🧹</span>
     </div>
     
+    <!-- 损坏状态 -->
+    <div class="broken-layout" v-else-if="applianceState.status === 'broken'">
+      <div class="broken-icon">
+        <span>🔧</span>
+      </div>
+      <div class="broken-info">
+        <span class="broken-text">损坏了!</span>
+        <button class="repair-btn" @click.stop="emit('repair', applianceId)">
+          🛠️ 修理
+        </button>
+      </div>
+    </div>
+    
+    <!-- 修理中状态 -->
+    <div class="repairing-layout" v-else-if="applianceState.status === 'repairing'">
+      <div class="repairing-icon">
+        <span>🔧</span>
+      </div>
+      <div class="repairing-info">
+        <span class="repairing-text">修理中...</span>
+        <div class="repairing-progress">
+          <div class="repairing-progress-fill" :style="{ width: applianceState.progress + '%' }"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 专属事件状态 -->
+    <div class="special-event-layout" v-else-if="eventConfig">
+      <div class="special-event-icon" :class="eventConfig.status">
+        <span>{{ eventConfig.icon }}</span>
+      </div>
+      <div class="special-event-info">
+        <span class="special-event-text">{{ eventConfig.name }}</span>
+        <button class="special-event-btn" @click.stop="emit('special-action', applianceId)">
+          {{ eventConfig.actionText }}
+          <span v-if="eventConfig.actionCost" class="action-cost">💰{{ eventConfig.actionCost }}</span>
+        </button>
+      </div>
+    </div>
+    
     <!-- 厨具名称/状态（只在空闲、烧焦、清理状态显示，垃圾桶除外） -->
     <div class="appliance-name" v-if="!isTrashBin && (applianceState.status === 'idle' || applianceState.status === 'burned' || applianceState.status === 'cleaning')">{{ getDisplayName() }}</div>
 
@@ -444,7 +489,7 @@ function handleSlotDragEnd(e) {
 <style scoped>
 .appliance-item {
   background: rgba(0, 0, 0, 0.4);
-  border: 3px solid #666;
+  border: 2px solid #666;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -452,7 +497,6 @@ function handleSlotDragEnd(e) {
   justify-content: center;
   gap: 8px;
   cursor: pointer;
-  transition: all 0.3s;
   position: relative;
   overflow: hidden;
 }
@@ -493,6 +537,65 @@ function handleSlotDragEnd(e) {
 .appliance-item.cleaning {
   border-color: #60a5fa;
   animation: appliance-clean 1s ease-in-out infinite;
+}
+
+/* 损坏状态 */
+.appliance-item.broken {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.2);
+  animation: appliance-broken 0.8s ease-in-out infinite;
+}
+
+/* 修理中状态 */
+.appliance-item.repairing {
+  border-color: #a78bfa;
+  animation: appliance-repairing 1s ease-in-out infinite;
+}
+
+/* 专属事件状态 */
+.appliance-item.flipped,
+.appliance-item.spatula_broken {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.2);
+  animation: appliance-wobble 0.5s ease-in-out infinite;
+}
+
+.appliance-item.exploded {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.3);
+  animation: appliance-explode 0.3s ease-in-out infinite;
+}
+
+.appliance-item.crazy {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.2);
+  animation: appliance-spin 0.5s linear infinite;
+}
+
+.appliance-item.self_burn {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.3);
+  animation: appliance-fire 0.4s ease-in-out infinite;
+}
+
+@keyframes appliance-wobble {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+@keyframes appliance-explode {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes appliance-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes appliance-fire {
+  0%, 100% { box-shadow: 0 0 15px rgba(249, 115, 22, 0.5); }
+  50% { box-shadow: 0 0 30px rgba(249, 115, 22, 0.9); }
 }
 
 /* 拖放相关样式 */
@@ -917,5 +1020,217 @@ function handleSlotDragEnd(e) {
   height: 100%;
   background: linear-gradient(90deg, var(--warning-orange), var(--success-green));
   transition: width 0.1s;
+}
+
+/* 损坏状态布局 */
+.broken-layout {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.broken-icon {
+  font-size: 36px;
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+.broken-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.broken-text {
+  font-size: 12px;
+  color: #f97316;
+  font-weight: bold;
+}
+
+.repair-btn {
+  padding: 4px 12px;
+  background: #a78bfa;
+  color: white;
+  border: 1px solid #a78bfa;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.repair-btn:hover {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+  transform: scale(1.05);
+}
+
+/* 修理中状态布局 */
+.repairing-layout {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.repairing-icon {
+  font-size: 36px;
+  animation: rotate 1s linear infinite;
+}
+
+.repairing-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.repairing-text {
+  font-size: 12px;
+  color: #a78bfa;
+  font-weight: bold;
+}
+
+.repairing-progress {
+  width: 80%;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.repairing-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a78bfa, #8b5cf6);
+  transition: width 0.1s;
+}
+
+/* 损坏和修理动画 */
+@keyframes appliance-broken {
+  0%, 100% { box-shadow: 0 0 10px rgba(249, 115, 22, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.7); }
+}
+
+@keyframes appliance-repairing {
+  0%, 100% { box-shadow: 0 0 10px rgba(167, 139, 250, 0.3); }
+  50% { box-shadow: 0 0 15px rgba(167, 139, 250, 0.5); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px) rotate(-2deg); }
+  75% { transform: translateX(3px) rotate(2deg); }
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 专属事件布局 */
+.special-event-layout {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.special-event-icon {
+  font-size: 36px;
+}
+
+.special-event-icon.flipped {
+  animation: wobble-icon 0.5s ease-in-out infinite;
+}
+
+.special-event-icon.spatula_broken {
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+.special-event-icon.exploded {
+  animation: explode-icon 0.3s ease-in-out infinite;
+}
+
+.special-event-icon.crazy {
+  animation: spin-icon 0.3s linear infinite;
+}
+
+.special-event-icon.self_burn {
+  animation: fire-icon 0.4s ease-in-out infinite;
+}
+
+@keyframes wobble-icon {
+  0%, 100% { transform: rotate(-15deg); }
+  50% { transform: rotate(15deg); }
+}
+
+@keyframes explode-icon {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+}
+
+@keyframes spin-icon {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fire-icon {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.1); filter: brightness(1.3); }
+}
+
+.special-event-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.special-event-text {
+  font-size: 12px;
+  color: #fbbf24;
+  font-weight: bold;
+}
+
+.special-event-btn {
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.special-event-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+.action-cost {
+  font-size: 10px;
+  opacity: 0.9;
 }
 </style>

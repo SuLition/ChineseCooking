@@ -663,6 +663,76 @@ const actions = {
     return Math.min(100, (elapsed / burnTime) * 100)
   },
   
+  // ========== 厨具损坏与修理 ==========
+  
+  // 使厨具损坏
+  breakAppliance(applianceId) {
+    const appliance = applianceStates[applianceId]
+    if (!appliance) return false
+    
+    // 只有空闲、有食材、处理中、完成状态的厨具才可能损坏
+    const canBreakStatuses = ['idle', 'hasIngredients', 'processing', 'done']
+    if (!canBreakStatuses.includes(appliance.status)) return false
+    
+    // 如果有食材或正在处理，食材丢失
+    appliance.status = 'broken'
+    appliance.ingredients = []
+    appliance.outputDish = null
+    appliance.progress = 0
+    appliance.burnProgress = 0
+    appliance.burnTimer = 0
+    appliance.startTime = 0
+    appliance.processTime = 0
+    
+    return true
+  },
+  
+  // 开始修理厨具
+  startRepairingAppliance(applianceId, repairTime, repairCost = 0) {
+    const appliance = applianceStates[applianceId]
+    if (!appliance || appliance.status !== 'broken') return false
+    
+    // 检查金币是否足够
+    if (repairCost > 0 && state.money < repairCost) return false
+    
+    // 扣除修理费用
+    if (repairCost > 0) {
+      state.money -= repairCost
+    }
+    
+    appliance.status = 'repairing'
+    appliance.progress = 0
+    appliance.startTime = Date.now()
+    appliance.processTime = repairTime
+    
+    return true
+  },
+  
+  // 更新修理进度
+  updateRepairingProgress(applianceId) {
+    const appliance = applianceStates[applianceId]
+    if (!appliance || appliance.status !== 'repairing') return
+    
+    const elapsed = Date.now() - appliance.startTime
+    appliance.progress = Math.min(100, (elapsed / appliance.processTime) * 100)
+    
+    if (appliance.progress >= 100) {
+      this.resetAppliance(applianceId)
+    }
+  },
+  
+  // 检查厨具是否损坏
+  isApplianceBroken(applianceId) {
+    const appliance = applianceStates[applianceId]
+    return appliance && appliance.status === 'broken'
+  },
+  
+  // 检查厨具是否正在修理
+  isApplianceRepairing(applianceId) {
+    const appliance = applianceStates[applianceId]
+    return appliance && appliance.status === 'repairing'
+  },
+  
   // 从备菜列表移除
   removePrepared(index) {
     if (index >= 0 && index < preparedItems.value.length) {
@@ -764,6 +834,12 @@ const actions = {
     if ((userData.seasonings[seasoningId] || 0) < amount) return false
     userData.seasonings[seasoningId] -= amount
     return true
+  },
+  
+  // 调料撒事件：减少调料容量
+  spillSeasoning(seasoningId, spillAmount) {
+    if (!userData.seasonings[seasoningId]) return
+    userData.seasonings[seasoningId] = Math.max(0, userData.seasonings[seasoningId] - spillAmount)
   },
   
   // 购买调料

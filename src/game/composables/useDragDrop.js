@@ -33,6 +33,8 @@ import {
  * @param {Ref} options.userApplianceLayout - 厨具布局
  * @param {Function} options.showToast - 显示提示函数
  * @param {Function} options.addItemToPlate - 添加食材到盘子
+ * @param {Function} options.onIngredientDragStart - 食材拖动开始回调（用于随机事件检查）
+ * @param {Function} options.onSeasoningDrop - 调料放入回调（用于随机事件检查）
  * @param {number} options.GRID_COLS - 网格列数
  * @param {number} options.GRID_ROWS - 网格行数
  */
@@ -46,6 +48,8 @@ export function useDragDrop(options) {
     userApplianceLayout,
     showToast,
     addItemToPlate,
+    onIngredientDragStart,
+    onSeasoningDrop,
     GRID_COLS = 10,
     GRID_ROWS = 5
   } = options
@@ -244,6 +248,19 @@ export function useDragDrop(options) {
   function handleDragStart(e, ingredientId) {
     const ingredient = rawIngredients[ingredientId]
     if (!ingredient) return
+    
+    // 检查是否触发食材掉落事件
+    if (onIngredientDragStart) {
+      const dropped = onIngredientDragStart(ingredient)
+      if (dropped) {
+        // 食材掉落了，取消拖动并扣除库存
+        e.preventDefault()
+        if (inventory[ingredientId] > 0) {
+          inventory[ingredientId]--
+        }
+        return
+      }
+    }
     
     // 创建统一拖放数据
     const item = createDragData({

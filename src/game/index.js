@@ -14,6 +14,9 @@ export { useGameStore } from './stores/gameStore'
 // 游戏系统
 export * from './systems'
 
+// 事件系统
+export * from './events'
+
 // 组合式函数
 export { useGame } from './composables/useGame'
 export { useDragDrop } from './composables/useDragDrop'

@@ -285,6 +285,7 @@ function handleDrop(e) {
   border-radius: 3px;
   font-size: 9px;
   font-weight: bold;
+  margin-left: auto;
 }
 
 @keyframes blink-text {

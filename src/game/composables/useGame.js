@@ -15,6 +15,7 @@ import { gameConfig } from '../data/config'
 import { getIngredientList, rawIngredients, preparedIngredients, getPreparedBySource } from '../data/ingredients'
 import { dishes, getDishList } from '../data/dishes'
 import { appliances } from '../data/appliances'
+import { useRandomEvents } from '../events'
 
 export function useGame() {
   // 初始化 Store
@@ -41,6 +42,60 @@ export function useGame() {
   
   // 厨具更新定时器
   let applianceTimer = null
+  
+  // ========== 显示提示函数（提前定义，供随机事件系统使用） ==========
+  
+  /**
+   * 显示提示消息
+   */
+  function showToast(message, type = 'info') {
+    const id = Date.now()
+    toasts.value.push({ id, message, type })
+    setTimeout(() => {
+      toasts.value = toasts.value.filter(t => t.id !== id)
+    }, 2500)
+  }
+  
+  // ========== 随机事件系统 ==========
+  
+  const randomEventsSystem = useRandomEvents({
+    showToast,
+    getCurrentDay: () => store.state.day,
+    applianceStates: store.applianceStates
+  })
+  
+  // 被虫子吃的食材ID（用于动画）
+  const bugEatenIngredientId = ref(null)
+  
+  /**
+   * 检查食材被虫子吃事件
+   * 随机选择一个有库存的食材进行检查
+   */
+  function checkIngredientBugEvent() {
+    // 获取所有有库存的食材
+    const ingredientsWithStock = Object.entries(store.inventory)
+      .filter(([id, count]) => count > 0 && rawIngredients[id])
+      .map(([id, count]) => ({ id, count, ...rawIngredients[id] }))
+    
+    if (ingredientsWithStock.length === 0) return
+    
+    // 随机选择一个食材
+    const randomIndex = Math.floor(Math.random() * ingredientsWithStock.length)
+    const ingredient = ingredientsWithStock[randomIndex]
+    
+    // 检查是否触发虫子事件
+    if (randomEventsSystem.checkIngredientBug(ingredient)) {
+      // 减少库存
+      store.inventory[ingredient.id]--
+      
+      // 设置被吃的食材ID（触发动画）
+      bugEatenIngredientId.value = ingredient.id
+      // 0.8秒后清除（动画时长）
+      setTimeout(() => {
+        bugEatenIngredientId.value = null
+      }, 800)
+    }
+  }
   
   // ========== 游戏控制 ==========
   
@@ -186,6 +241,9 @@ export function useGame() {
           showToast(`${newCustomer.icon} ${newCustomer.name}来了，想要${newCustomer.dish}`, 'success')
         }
       }
+      
+      // 检查食材被虫子吃事件
+      checkIngredientBugEvent()
     }, gameConfig.customerSpawnInterval)
   }
   
@@ -220,6 +278,16 @@ export function useGame() {
         const applianceData = appliances[applianceId]
         
         if (appliance.status === 'processing') {
+          // 先检查专属事件
+          if (randomEventsSystem.checkSpecialEvent(applianceId)) {
+            return
+          }
+          
+          // 再检查通用损坏事件
+          if (randomEventsSystem.checkApplianceBreak(applianceId)) {
+            return
+          }
+          
           store.updateApplianceProgress(applianceId)
           
           // 检查是否完成
@@ -259,6 +327,18 @@ export function useGame() {
             
             // 清理完成后检查是否可以关店
             if (appliance.status === 'idle' && isClosing) {
+              checkCanFinishClose()
+            }
+          }
+        } else if (appliance.status === 'repairing') {
+          // 厨具修理进度
+          store.updateRepairingProgress(applianceId)
+          
+          // 修理完成
+          if (appliance.status === 'idle') {
+            soundManager.playSuccess()
+            showToast(`✅ ${applianceData?.name || applianceId}修好了！`, 'success')
+            if (isClosing) {
               checkCanFinishClose()
             }
           }
@@ -481,16 +561,7 @@ export function useGame() {
   
   // ========== UI 辅助 ==========
   
-  /**
-   * 显示 Toast 消息
-   */
-  function showToast(message, type = 'success') {
-    const id = Date.now() + Math.random()
-    toasts.value.push({ id, message, type })
-    setTimeout(() => {
-      toasts.value = toasts.value.filter(t => t.id !== id)
-    }, 2000)
-  }
+  // showToast 已在文件开头定义，供随机事件系统使用
   
   /**
    * 获取格式化时间
@@ -635,7 +706,11 @@ export function useGame() {
     toggleCustomerSpawn,
     debugSpawnCustomer,
     debugSpawnDish,
-    dishList
+    dishList,
+    
+    // 随机事件系统
+    randomEventsSystem,
+    bugEatenIngredientId
   }
 }
 

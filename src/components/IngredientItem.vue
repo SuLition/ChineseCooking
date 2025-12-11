@@ -11,6 +11,10 @@ const props = defineProps({
   stock: {
     type: Number,
     default: 0
+  },
+  bugEaten: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -74,10 +78,14 @@ function handleDragEnd(e) {
   <div 
     class="ingredient-item" 
     :draggable="stock > 0"
-    :class="{ 'out-of-stock': stock <= 0 }"
+    :class="{ 'out-of-stock': stock <= 0, 'bug-eaten': bugEaten }"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
   >
+    <!-- 虫子动画 -->
+    <div v-if="bugEaten" class="bug-animation">
+      <span class="bug-icon">🐛</span>
+    </div>
     <div class="ingredient-icon">
       <img v-if="ingredient.image" :src="ingredient.image" :alt="ingredient.name" class="ingredient-img" />
       <span v-else>{{ ingredient.icon }}</span>
@@ -165,5 +173,73 @@ function handleDragEnd(e) {
 .ingredient-stock.out {
   background: #ef4444;
   color: #fff;
+}
+
+/* 虫子吃食材动画 */
+.ingredient-item.bug-eaten {
+  animation: bug-shake 0.5s ease-in-out, bug-color 0.8s ease-in-out;
+}
+
+.bug-animation {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.bug-icon {
+  font-size: 28px;
+  animation: bug-crawl 0.8s ease-in-out;
+}
+
+@keyframes bug-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px) rotate(-2deg); }
+  40% { transform: translateX(4px) rotate(2deg); }
+  60% { transform: translateX(-3px) rotate(-1deg); }
+  80% { transform: translateX(3px) rotate(1deg); }
+}
+
+@keyframes bug-crawl {
+  0% { 
+    opacity: 0;
+    transform: scale(0.3) rotate(-20deg);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.2) rotate(10deg);
+  }
+  60% {
+    transform: scale(1) rotate(-5deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5) translateY(-20px) rotate(15deg);
+  }
+}
+
+@keyframes bug-color {
+  0% {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: #666;
+  }
+  20% {
+    background: rgba(139, 69, 19, 0.6);
+    border-color: #8b4513;
+  }
+  50% {
+    background: rgba(34, 139, 34, 0.5);
+    border-color: #228b22;
+  }
+  80% {
+    background: rgba(139, 69, 19, 0.4);
+    border-color: #8b4513;
+  }
+  100% {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: #666;
+  }
 }
 </style>
