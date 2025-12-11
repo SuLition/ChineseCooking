@@ -16,7 +16,7 @@ import Achievement from './components/ui/Achievement.vue'
 import ComboDisplay from './components/ui/ComboDisplay.vue'
 // 拆分出的组件
 import StatusBar from './components/StatusBar.vue'
-import DebugMenu from './components/DebugMenu.vue'
+import DebugModal from './components/DebugModal.vue'
 import OrderList from './components/OrderList.vue'
 import ApplianceItem from './components/ApplianceItem.vue'
 import IngredientItem from './components/IngredientItem.vue'
@@ -30,6 +30,8 @@ import { useGameStore } from './game/stores/gameStore'
 import { rawIngredients, preparedIngredients, seasonings } from './game/data/ingredients'
 import { appliances } from './game/data/appliances'
 import { dishes } from './game/data/dishes'
+import { internalEvents, difficultyMultipliers } from './game/events/internalEvents'
+import { externalEvents } from './game/events/externalEvents'
 
 // ========== 初始化游戏 ==========
 const {
@@ -102,8 +104,8 @@ const currentEvent = ref(null)
 const achievement = ref(null)
 const showCombo = computed(() => state.combo >= 2)
 
-// 调试菜单
-const showDebugMenu = ref(false)
+// 调试弹窗
+const showDebugModal = ref(false)
 
 // 盘子数据结构 - 每个盘子只能装一个成品菜
 // status: 'empty' | 'hasDish' | 'served'
@@ -495,6 +497,57 @@ function handleDebugSpawnDish(dishId) {
   debugSpawnDish(dishId)
 }
 
+// 切换事件系统
+function handleToggleEvents() {
+  const enabled = !randomEventsSystem.eventsEnabled.value
+  randomEventsSystem.setEventsEnabled(enabled)
+  showToast(`[调试] 事件系统: ${enabled ? '开启' : '关闭'}`, enabled ? 'success' : 'error')
+}
+
+// 更新事件概率
+function handleUpdateProbability({ type, eventId, probability }) {
+  if (type === 'internal' && internalEvents[eventId]) {
+    internalEvents[eventId].probability = probability
+    showToast(`[调试] ${internalEvents[eventId].name} 概率设为 ${(probability * 100).toFixed(1)}%`, 'success')
+  } else if (type === 'external' && externalEvents[eventId]) {
+    externalEvents[eventId].probability = probability
+    showToast(`[调试] ${externalEvents[eventId].name} 概率设为 ${(probability * 100).toFixed(1)}%`, 'success')
+  }
+}
+
+// 更新难度倍率
+function handleUpdateDifficulty({ level, multiplier }) {
+  if (difficultyMultipliers[level]) {
+    difficultyMultipliers[level].multiplier = multiplier
+    showToast(`[调试] ${level} 难度倍率设为 ${multiplier}x`, 'success')
+  }
+}
+
+// 手动触发事件
+function handleTriggerEvent({ type, eventId }) {
+  if (type === 'internal') {
+    // 内部事件需要根据事件类型处理
+    const eventConfig = internalEvents[eventId]
+    if (eventConfig) {
+      showToast(`[调试] 触发事件: ${eventConfig.name}`, 'warning')
+      // 这里可以根据事件类型调用对应的触发函数
+      console.log(`[调试] 触发内部事件: ${eventId}`)
+    }
+  } else if (type === 'external') {
+    const eventConfig = externalEvents[eventId]
+    if (eventConfig) {
+      showToast(`[调试] 触发事件: ${eventConfig.name}`, 'warning')
+      console.log(`[调试] 触发外部事件: ${eventId}`)
+    }
+  }
+}
+
+// 重置所有冷却
+function handleResetCooldowns() {
+  randomEventsSystem.resetAllCooldowns()
+  showToast('[调试] 所有事件冷却已重置', 'success')
+}
+
 // 点击厨具
 function handleApplianceClick(applianceId) {
   clickAppliance(applianceId)
@@ -537,18 +590,26 @@ function getEventConfig(applianceId) {
       @show-shop-panel="showShopPanel = true"
       @show-upgrade-panel="showUpgradePanel = true"
       @show-sound-panel="showSoundPanel = !showSoundPanel"
-      @toggle-debug="showDebugMenu = !showDebugMenu"
+      @toggle-debug="showDebugModal = !showDebugModal"
     />
     
-    <!-- 调试菜单 -->
-    <DebugMenu
-      :visible="showDebugMenu"
+    <!-- 调试弹窗 -->
+    <DebugModal
+      :visible="showDebugModal"
       :customer-spawn-enabled="debugState.customerSpawnEnabled"
       :customer-count="customers.length"
       :dish-list="dishList"
+      :events-enabled="randomEventsSystem.eventsEnabled.value"
+      :current-day="state.day"
+      @close="showDebugModal = false"
       @toggle-spawn="handleToggleCustomerSpawn"
       @spawn-customer="handleDebugSpawnCustomer"
-      @spawn-dish="debugSpawnDish"
+      @spawn-dish="handleDebugSpawnDish"
+      @toggle-events="handleToggleEvents"
+      @update-probability="handleUpdateProbability"
+      @update-difficulty="handleUpdateDifficulty"
+      @trigger-event="handleTriggerEvent"
+      @reset-cooldowns="handleResetCooldowns"
     />
     
     <!-- 主内容区 -->

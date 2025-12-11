@@ -14,6 +14,7 @@ import {
   calculateRepairCost,
   getApplianceEvents
 } from './internalEvents'
+import { externalEvents } from './externalEvents'
 import { InternalEventTypes } from './types'
 
 // 事件类型别名（保持兼容性）
@@ -51,7 +52,9 @@ export function useInternalEvents(options) {
     [EventTypes.PLATE_SPILL]: 0,
     [EventTypes.PLATE_BREAK]: 0,
     // 调料事件冷却
-    [EventTypes.SEASONING_SPILL]: 0
+    [EventTypes.SEASONING_SPILL]: 0,
+    // 食材事件冷却
+    ingredient_bug: 0
   })
   
   // 事件是否启用
@@ -64,7 +67,8 @@ export function useInternalEvents(options) {
     specialEventCount: 0,
     plateSpillCount: 0,
     plateBreakCount: 0,
-    seasoningSpillCount: 0
+    seasoningSpillCount: 0,
+    ingredientBugCount: 0
   })
 
   // ========== 核心函数 ==========
@@ -84,7 +88,8 @@ export function useInternalEvents(options) {
    * @param {string} eventId - 事件ID
    */
   function setEventCooldown(eventId) {
-    const event = internalEvents[eventId]
+    // 优先查找内部事件，否则查找外部事件
+    const event = internalEvents[eventId] || externalEvents[eventId]
     if (event) {
       eventCooldowns[eventId] = Date.now() + event.cooldown
     }
@@ -102,7 +107,12 @@ export function useInternalEvents(options) {
     if (isEventOnCooldown(eventId)) return false
     
     const day = getCurrentDay ? getCurrentDay() : 1
-    const probability = getActualProbability(eventId, day)
+    
+    // 优先查找内部事件，否则查找外部事件
+    const event = internalEvents[eventId] || externalEvents[eventId]
+    if (!event) return false
+    
+    const probability = event.probability * (day * 0.1 + 0.9) // 简化的概率计算
     const roll = Math.random()
     
     return roll < probability
@@ -515,6 +525,54 @@ export function useInternalEvents(options) {
     return { triggered: true, spillAmount }
   }
 
+  // ========== 食材事件 ==========
+
+  /**
+   * 检查并触发食材被虫子吃事件
+   * @param {Object} ingredient - 食材数据 { id, name }
+   * @returns {boolean} 是否触发了事件
+   */
+  function checkIngredientBug(ingredient) {
+    // 检查冷却
+    if (isEventOnCooldown('ingredient_bug')) {
+      return false
+    }
+    
+    // 尝试触发
+    if (!tryTriggerEvent('ingredient_bug')) {
+      return false
+    }
+    
+    // 触发虫子事件
+    return triggerIngredientBug(ingredient)
+  }
+
+  /**
+   * 触发食材被虫子吃事件
+   * @param {Object} ingredient - 食材数据
+   * @returns {boolean}
+   */
+  function triggerIngredientBug(ingredient) {
+    // 设置冷却
+    setEventCooldown('ingredient_bug')
+    
+    // 统计
+    eventStats.ingredientBugCount++
+    
+    // 使用外部事件配置
+    const eventConfig = externalEvents.ingredient_bug
+    
+    // 提示
+    const ingredientName = ingredient?.name || '食材'
+    const message = eventConfig.messages.trigger
+      .replace('{ingredient}', ingredientName)
+    showToast(message, 'error')
+    
+    console.log(`[InternalEvent] 食材被虫子吃了: ${ingredientName}`)
+    
+    return true
+  }
+
   // ========== 系统控制 ==========
 
   /**
@@ -567,12 +625,16 @@ export function useInternalEvents(options) {
     // 调料事件
     checkSeasoningSpill,
     
+    // 食材事件
+    checkIngredientBug,
+    
     // 强制触发（用于调试）
     triggerApplianceBreak,
     triggerIngredientDrop,
     triggerPlateSpill,
     triggerPlateBreak,
     triggerSeasoningSpill,
+    triggerIngredientBug,
     
     // 厨具修理
     repairAppliance,

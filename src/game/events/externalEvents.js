@@ -22,7 +22,7 @@ export const externalEvents = {
     name: '小偷',
     icon: '🦹',
     image: null,  // 可选：自定义图片
-    probability: 0.02,  // 基础概率
+    probability: 0,  // 基础概率
     cooldown: 60000,    // 冷却时间（60秒）
     duration: 10000,    // 事件持续时间（10秒内必须响应）
     description: '一个鬼鬼祟祟的人在店里徘徊...',
@@ -61,7 +61,7 @@ export const externalEvents = {
     category: 'interactive',
     name: '乞丐',
     icon: '🧎',
-    probability: 0.03,
+    probability: 0,
     cooldown: 45000,
     duration: 15000,
     description: '一个衣衫褴褛的人在门口乞讨...',
@@ -107,7 +107,7 @@ export const externalEvents = {
     category: 'interactive',
     name: '卫生检查员',
     icon: '👨‍⚕️',
-    probability: 0.015,
+    probability: 0,
     cooldown: 120000,
     duration: 20000,
     description: '卫生检查员来检查你的餐厅了！',
@@ -144,7 +144,7 @@ export const externalEvents = {
     category: 'interactive',
     name: '美食评论家',
     icon: '👨‍🍳',
-    probability: 0.01,
+    probability: 0,
     cooldown: 180000,
     duration: 30000,
     description: '一位著名的美食评论家来到了你的店里！',
@@ -165,7 +165,7 @@ export const externalEvents = {
     category: 'interactive',
     name: '名人',
     icon: '⭐',
-    probability: 0.008,
+    probability: 0,
     cooldown: 300000,
     duration: 25000,
     description: '一位名人慕名来到你的餐厅！',
@@ -190,7 +190,7 @@ export const externalEvents = {
     category: 'interactive',
     name: '供应商',
     icon: '🚚',
-    probability: 0.025,
+    probability: 0,
     cooldown: 90000,
     duration: 20000,
     description: '一位供应商带来了特价商品！',
@@ -209,7 +209,7 @@ export const externalEvents = {
     category: 'passive',
     name: '虫子吃食材',
     icon: '🐛',
-    probability: 0.03,
+    probability: 0,
     cooldown: 5000,
     description: '虫子吃掉了一个食材',
     effect: {
@@ -226,7 +226,7 @@ export const externalEvents = {
     category: 'passive',
     name: '老鼠来访',
     icon: '🐀',
-    probability: 0.015,
+    probability: 0,
     cooldown: 30000,
     description: '一只老鼠溜进了厨房',
     effect: {
@@ -244,7 +244,7 @@ export const externalEvents = {
     category: 'passive',
     name: '短暂停电',
     icon: '⚡',
-    probability: 0.01,
+    probability: 0,
     cooldown: 60000,
     description: '突然停电了',
     effect: {
