@@ -73,6 +73,61 @@ export const dishes = {
       { type: 'prepared', id: 'garlic_chopped', count: 1 },
       { type: 'seasoning', id: 'salt', count: 1 }
     ]
+  },
+  
+  // ========== 蒸箱菜品 ==========
+  steamed_pumpkin: {
+    id: 'steamed_pumpkin',
+    name: '蒸南瓜',
+    icon: '🎃',
+    image: '/images/dishes/steamed_pumpkin.png',
+    price: 12,
+    cookTime: 5000,
+    difficulty: 1,
+    unlockLevel: 1,
+    description: '软糯香甜的蒸南瓜',
+    appliance: 'steamer',
+    // 配方：南瓜块 + 糖
+    recipe: [
+      { type: 'prepared', id: 'pumpkin_chopped', count: 1 },
+      { type: 'seasoning', id: 'sugar', count: 1 }
+    ]
+  },
+  steamed_egg: {
+    id: 'steamed_egg',
+    name: '蒸蛋',
+    icon: '🥚',
+    image: '/images/dishes/steamed_egg.png',
+    price: 10,
+    cookTime: 4000,
+    difficulty: 1,
+    unlockLevel: 1,
+    description: '嫩滑可口的蒸蛋',
+    appliance: 'steamer',
+    // 配方：打散的鸡蛋 + 盐
+    recipe: [
+      { type: 'prepared', id: 'egg_beaten', count: 1 },
+      { type: 'seasoning', id: 'salt', count: 1 }
+    ]
+  },
+  steamed_vegetables: {
+    id: 'steamed_vegetables',
+    name: '清蒸时蔬',
+    icon: '🥬',
+    image: '/images/dishes/steamed_vegetables.png',
+    price: 18,
+    cookTime: 5000,
+    difficulty: 2,
+    unlockLevel: 1,
+    description: '清淡健康的蒸时蔬',
+    appliance: 'steamer',
+    // 配方：切好的青菜 + 南瓜块 + 切好的香草 + 盐
+    recipe: [
+      { type: 'prepared', id: 'vegetables_chopped', count: 1 },
+      { type: 'prepared', id: 'pumpkin_chopped', count: 1 },
+      { type: 'prepared', id: 'herbs_chopped', count: 1 },
+      { type: 'seasoning', id: 'salt', count: 1 }
+    ]
   }
 }
 
