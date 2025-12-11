@@ -176,7 +176,7 @@ function handleDrop(e) {
 
 .avatar-box {
   flex: 1;
-  background: var(--primary-red);
+  background: #3d2a1f;
   border-radius: 8px;
   padding: 8px;
   display: flex;
