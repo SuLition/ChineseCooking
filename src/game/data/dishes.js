@@ -54,6 +54,25 @@ export const dishes = {
       { type: 'prepared', id: 'egg_fried', count: 1 },
       { type: 'seasoning', id: 'salt', count: 1 }
     ]
+  },
+  mixed_vegetables: {
+    id: 'mixed_vegetables',
+    name: '素什锦',
+    icon: '🥗',
+    image: '/images/dishes/mixed_vegetables.png',
+    price: 20,
+    cookTime: 4000,
+    difficulty: 2,
+    unlockLevel: 1,
+    description: '多种蔬菜的完美组合',
+    appliance: 'wok',
+    // 配方：切好的青菜 + 洋葱丁 + 蒜末 + 盐
+    recipe: [
+      { type: 'prepared', id: 'vegetables_chopped', count: 1 },
+      { type: 'prepared', id: 'onion_chopped', count: 1 },
+      { type: 'prepared', id: 'garlic_chopped', count: 1 },
+      { type: 'seasoning', id: 'salt', count: 1 }
+    ]
   }
 }
 
@@ -182,8 +201,16 @@ export function calculateDishOutput(ingredients, dish, applianceId = null) {
     have[key] = (have[key] || 0) + (item.count || 1)
   })
   
-  // 检查是否有所有需要的食材类型，并计算每种食材能做几份
+  // 检查食材种类是否完全匹配（不能有多余的食材种类）
   const requiredKeys = Object.keys(required)
+  const haveKeys = Object.keys(have)
+  
+  // 食材种类数量必须一致
+  if (requiredKeys.length !== haveKeys.length) {
+    return { match: false, count: 0, dish: null }
+  }
+  
+  // 检查是否有所有需要的食材类型，并计算每种食材能做几份
   let maxOutputCount = Infinity
   
   for (const key of requiredKeys) {
