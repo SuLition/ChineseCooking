@@ -1,0 +1,80 @@
+/**
+ * 中华料理传奇 - CSS 变量定义
+ * Chinese Cuisine Legend - CSS Variables
+ */
+
+/* Google Fonts 导入 */
+@import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Press+Start+2P&display=swap');
+
+:root {
+  /* ========== 主题色彩 ========== */
+  /* 主色调 */
+  --primary-red: #c41e3a;
+  --primary-red-dark: #8b1225;
+  --gold: #ffd700;
+  --gold-dark: #b8860b;
+  
+  /* 木质色系 */
+  --dark-wood: #4a3728;
+  --light-wood: #8b7355;
+  --bg-warm: #2d1f1a;
+  
+  /* 文字颜色 */
+  --text-light: #f5e6d3;
+  --text-muted: #888;
+  --text-dark: #000;
+  
+  /* 状态颜色 */
+  --success-green: #4ade80;
+  --success-green-dark: #22c55e;
+  --warning-orange: #fb923c;
+  --warning-yellow: #eab308;
+  --danger-red: #ef4444;
+  --perfect-purple: #a855f7;
+  --info-blue: #3b82f6;
+  
+  /* ========== 渐变背景 ========== */
+  --gradient-bg: linear-gradient(180deg, #1a0f0a 0%, #2d1f1a 50%, #3d2a1f 100%);
+  --gradient-wood: linear-gradient(180deg, var(--dark-wood) 0%, #3a2a1f 100%);
+  --gradient-red-btn: linear-gradient(180deg, var(--primary-red) 0%, var(--primary-red-dark) 100%);
+  --gradient-gold-btn: linear-gradient(180deg, var(--gold) 0%, var(--gold-dark) 100%);
+  --gradient-panel: linear-gradient(180deg, #3a2a1f 0%, #1a0f0a 100%);
+  --gradient-panel-dark: linear-gradient(180deg, #2a1a15 0%, #1a0f0a 100%);
+  
+  /* ========== 阴影 ========== */
+  --shadow-inset: inset 0 0 100px rgba(0, 0, 0, 0.5);
+  --shadow-station: 0 10px 25px rgba(0, 0, 0, 0.5);
+  --shadow-glow-gold: 0 0 20px rgba(255, 215, 0, 0.5);
+  --shadow-glow-green: 0 0 20px rgba(74, 222, 128, 0.5);
+  --shadow-glow-purple: 0 0 20px rgba(168, 85, 247, 0.5);
+  --shadow-glow-orange: 0 0 20px rgba(251, 146, 60, 0.5);
+  
+  /* ========== 字体 ========== */
+  --font-chinese: 'ZCOOL KuaiLe', 'Microsoft YaHei', '微软雅黑', 'SimHei', '黑体', sans-serif;
+  --font-pixel: 'Press Start 2P', 'Courier New', monospace;
+  
+  /* ========== 尺寸 ========== */
+  --top-bar-height: 74px;
+  --ingredient-area-height: 200px;
+  --cooking-panel-width: 400px;
+  --border-radius-sm: 6px;
+  --border-radius-md: 10px;
+  --border-radius-lg: 16px;
+  
+  /* ========== 过渡 ========== */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  
+  /* ========== Z-Index 层级 ========== */
+  --z-base: 1;
+  --z-top-bar: 100;
+  --z-overlay: 250;
+  --z-upgrade-panel: 300;
+  --z-modal: 350;
+  --z-combo: 400;
+  --z-event: 500;
+  --z-toast: 600;
+  --z-start-screen: 700;
+  --z-sound-panel: 1000;
+}

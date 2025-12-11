@@ -1,0 +1,29 @@
+/**
+ * 中华料理传奇 - 主样式入口
+ * Chinese Cuisine Legend - Main Style Entry
+ */
+
+/* 导入样式模块 */
+@import './assets/styles/variables.css';
+@import './assets/styles/animations.css';
+@import './assets/styles/global.css';
+
+/* App 容器 */
+#app {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* 禁止所有图片拖动 */
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}

@@ -1,0 +1,218 @@
+/**
+ * 中华料理传奇 - 全局样式
+ * Chinese Cuisine Legend - Global Styles
+ */
+
+/* ========== 基础重置 ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+body {
+  font-family: var(--font-chinese);
+  background: var(--bg-warm);
+  min-height: 100vh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* ========== 滚动条 ========== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--dark-wood);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--light-wood);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
+}
+
+/* ========== 游戏容器 ========== */
+.game-container {
+  width: 100vw;
+  height: 100vh;
+  background: var(--gradient-bg);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-inset);
+}
+
+/* ========== 通用按钮样式 ========== */
+.btn-primary {
+  background: var(--gradient-red-btn);
+  border: 3px solid var(--gold);
+  color: var(--text-light);
+  font-family: var(--font-chinese);
+  font-size: 18px;
+  padding: 12px 24px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-small {
+  background: var(--gradient-red-btn);
+  border: 2px solid var(--gold);
+  color: var(--text-light);
+  font-family: var(--font-chinese);
+  font-size: 16px;
+  padding: 8px 16px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-small:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.btn-gold {
+  background: var(--gradient-gold-btn);
+  border: none;
+  color: var(--text-dark);
+  font-family: var(--font-chinese);
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-gold:hover {
+  transform: scale(1.05);
+}
+
+.btn-gold:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========== 统计盒子 ========== */
+.stat-box {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--gold);
+  border-radius: var(--border-radius-sm);
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  color: var(--text-light);
+}
+
+.stat-icon {
+  font-size: 22px;
+}
+
+.stat-value {
+  font-family: var(--font-pixel);
+  font-size: 14px;
+  color: var(--gold);
+}
+
+.stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ========== 面板通用样式 ========== */
+.panel {
+  background: var(--gradient-panel);
+  border: 6px solid var(--gold);
+  border-radius: var(--border-radius-lg);
+  padding: 30px;
+}
+
+.panel-title {
+  font-size: 28px;
+  color: var(--gold);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* ========== 关闭按钮 ========== */
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: var(--primary-red);
+  border: 2px solid var(--gold);
+  color: var(--text-light);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.close-btn:hover {
+  transform: scale(1.1);
+}
+
+/* ========== 遮罩层 ========== */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: var(--z-overlay);
+  display: none;
+}
+
+.overlay.active {
+  display: block;
+}
+
+/* ========== 进度条 ========== */
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background: #333;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--success-green), var(--success-green-dark));
+  transition: width 0.1s linear;
+}
+
+/* ========== 浮动金币效果 ========== */
+.floating-coin {
+  position: fixed;
+  font-size: 24px;
+  pointer-events: none;
+  z-index: 500;
+  animation: float-up 1s ease-out forwards;
+}
