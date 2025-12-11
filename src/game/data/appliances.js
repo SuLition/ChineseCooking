@@ -85,6 +85,27 @@ export const appliances = {
     cleanTime: 5000,
     price: 500,
     description: '烤制食材'
+  },
+  
+  trash_bin: {
+    id: 'trash_bin',
+    name: '垃圾桶',
+    icon: '🗑️',
+    image: '/images/appliances/trash_bin.png',
+    gridSize: { cols: 2, rows: 2 },
+    // 最大容量20个物品
+    capacity: 20,
+    level: 1,
+    // 不需要处理时间
+    processTime: 0,
+    // 不会烧焦
+    burnTime: 0,
+    // 清理时间（倒垃圾）
+    cleanTime: 3000,
+    price: 0,
+    // 特殊类型标记
+    type: 'trash',
+    description: '丢弃厨余垃圾'
   }
 }
 

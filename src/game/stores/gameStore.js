@@ -81,7 +81,7 @@ const userData = reactive({
   },
   
   // 拥有的厨具（ID数组，用户可以拥有多个同类型厨具）
-  appliances: ['cutting_board', 'wok', 'steamer', 'mixer', 'grill'],
+  appliances: ['cutting_board', 'wok', 'steamer', 'mixer', 'grill', 'trash_bin'],
   
   // 盘子数量
   plates: 3
@@ -523,6 +523,77 @@ const actions = {
     appliance.ingredients = []
     appliance.status = 'idle'
     return true
+  },
+  
+  // 添加垃圾到垃圾桶
+  addTrashToTrashBin(applianceId, itemData) {
+    const appliance = applianceStates[applianceId]
+    const applianceData = appliances[applianceId]
+    if (!appliance || applianceData?.type !== 'trash') return false
+    
+    // 只有空闲或有垃圾状态才能添加
+    if (appliance.status !== 'idle' && appliance.status !== 'hasIngredients') return false
+    
+    // 检查容量
+    const currentCount = appliance.trashCount || 0
+    const capacity = applianceData.capacity || 20
+    
+    if (currentCount >= capacity) {
+      return false // 垃圾桶满了
+    }
+    
+    // 增加垃圾数量
+    appliance.trashCount = currentCount + 1
+    appliance.status = 'hasIngredients'
+    
+    return true
+  },
+  
+  // 开始清理垃圾桶（倒垃圾）
+  startEmptyingTrash(applianceId) {
+    const appliance = applianceStates[applianceId]
+    const applianceData = appliances[applianceId]
+    if (!appliance || applianceData?.type !== 'trash') return false
+    if (appliance.status !== 'hasIngredients') return false
+    if (!appliance.trashCount || appliance.trashCount <= 0) return false
+    
+    appliance.status = 'cleaning'
+    appliance.progress = 0
+    appliance.startTime = Date.now()
+    appliance.processTime = applianceData.cleanTime || 3000
+    
+    return true
+  },
+  
+  // 更新垃圾桶清理进度
+  updateTrashCleaningProgress(applianceId) {
+    const appliance = applianceStates[applianceId]
+    const applianceData = appliances[applianceId]
+    if (!appliance || applianceData?.type !== 'trash') return
+    if (appliance.status !== 'cleaning') return
+    
+    const elapsed = Date.now() - appliance.startTime
+    appliance.progress = Math.min(100, (elapsed / appliance.processTime) * 100)
+    
+    if (appliance.progress >= 100) {
+      // 清理完成，重置垃圾桶
+      appliance.status = 'idle'
+      appliance.trashCount = 0
+      appliance.progress = 0
+      appliance.startTime = 0
+      appliance.processTime = 0
+    }
+  },
+  
+  // 获取垃圾桶容量百分比
+  getTrashFillPercent(applianceId) {
+    const appliance = applianceStates[applianceId]
+    const applianceData = appliances[applianceId]
+    if (!appliance || applianceData?.type !== 'trash') return 0
+    
+    const capacity = applianceData.capacity || 20
+    const count = appliance.trashCount || 0
+    return Math.min(100, (count / capacity) * 100)
   },
   
   // 从厨具中移除指定食材

@@ -243,11 +243,24 @@ export function useGame() {
             showToast(`🔥 ${applianceData.name}上的食材烧焦了！`, 'error')
           }
         } else if (appliance.status === 'cleaning') {
-          store.updateCleaningProgress(applianceId)
-          
-          // 清理完成后检查是否可以关店
-          if (appliance.status === 'idle' && isClosing) {
-            checkCanFinishClose()
+          // 垃圾桶清理进度特殊处理
+          if (applianceData?.type === 'trash') {
+            store.updateTrashCleaningProgress(applianceId)
+            
+            // 清理完成后检查是否可以关店
+            if (appliance.status === 'idle') {
+              showToast(`✅ 垃圾桶清理完成！`, 'success')
+              if (isClosing) {
+                checkCanFinishClose()
+              }
+            }
+          } else {
+            store.updateCleaningProgress(applianceId)
+            
+            // 清理完成后检查是否可以关店
+            if (appliance.status === 'idle' && isClosing) {
+              checkCanFinishClose()
+            }
           }
         }
       })

@@ -112,6 +112,16 @@ export function canDrop(item, targetType, targetOptions = {}) {
 
     case DropTargets.APPLIANCE:
       const { applianceId, applianceStatus } = targetOptions
+      const applianceData = appliances[applianceId]
+      
+      // 垃圾桶特殊处理：接受所有类型的物品
+      if (applianceData?.type === 'trash') {
+        // 只有空闲或有垃圾状态才能添加
+        if (applianceStatus !== 'idle' && applianceStatus !== 'hasIngredients') {
+          return { canDrop: false, reason: '垃圾桶正在清理' }
+        }
+        return { canDrop: true, reason: '' }
+      }
       
       // 成品菜只能装盘，不能放入厨具
       if (item.type === 'dish') {

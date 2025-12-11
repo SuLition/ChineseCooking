@@ -416,9 +416,16 @@ export function useDragDrop(options) {
     }
     
     const appliance = applianceStates[applianceId]
+    const applianceData = appliances[applianceId]
     const status = appliance.status
-    // 允许 idle、hasIngredients 和 done 状态接收食材
-    if (status !== 'idle' && status !== 'hasIngredients' && status !== 'done') return
+    
+    // 垃圾桶特殊处理：只允许 idle 和 hasIngredients 状态
+    if (applianceData?.type === 'trash') {
+      if (status !== 'idle' && status !== 'hasIngredients') return
+    } else {
+      // 普通厨具：允许 idle、hasIngredients 和 done 状态接收食材
+      if (status !== 'idle' && status !== 'hasIngredients' && status !== 'done') return
+    }
     
     // 尝试解析为统一JSON格式
     const item = parseDragData(data)
@@ -436,7 +443,8 @@ export function useDragDrop(options) {
   
   // 处理统一格式的拖放
   function handleUnifiedDrop(item, applianceId) {
-    const targetAppName = appliances[applianceId]?.name || applianceId
+    const targetAppData = appliances[applianceId]
+    const targetAppName = targetAppData?.name || applianceId
     const appliance = applianceStates[applianceId]
     
     // 不能放回同一个厨具
@@ -452,6 +460,12 @@ export function useDragDrop(options) {
     
     if (!dropResult.canDrop) {
       showToast(`❌ ${item.name} 不能放入${targetAppName}`, 'error')
+      return
+    }
+    
+    // 垃圾桶特殊处理
+    if (targetAppData?.type === 'trash') {
+      handleDropToTrashBin(item, applianceId)
       return
     }
     
@@ -572,6 +586,8 @@ export function useDragDrop(options) {
   
   // 处理旧格式的拖放（兼容性，逐步废弃）
   function handleLegacyDrop(data, applianceId) {
+    const targetAppData = appliances[applianceId]
+    
     // 处理从厨具拖出的食材
     if (data.startsWith('appliance-ingredient:')) {
       const parts = data.split(':')
@@ -584,6 +600,33 @@ export function useDragDrop(options) {
       if (sourceAppliance && sourceAppliance.ingredients[slotIndex]) {
         const ingredientData = sourceAppliance.ingredients[slotIndex]
         const currentCount = ingredientData.count || 1
+        
+        // 垃圾桶特殊处理
+        if (targetAppData?.type === 'trash') {
+          const trashBin = applianceStates[applianceId]
+          const capacity = targetAppData.capacity || 20
+          if ((trashBin.trashCount || 0) >= capacity) {
+            showToast(`❌ 垃圾桶已满，请先清理`, 'error')
+            return
+          }
+          
+          store.addTrashToTrashBin(applianceId, ingredientData)
+          
+          if (currentCount > 1) {
+            sourceAppliance.ingredients[slotIndex] = {
+              ...ingredientData,
+              count: currentCount - 1
+            }
+          } else {
+            sourceAppliance.ingredients.splice(slotIndex, 1)
+            if (sourceAppliance.ingredients.length === 0) {
+              sourceAppliance.status = 'idle'
+            }
+          }
+          showToast(`🗑️ 丢弃了 ${ingredientData.name}`, 'success')
+          draggingFromAppliance.value = null
+          return
+        }
         
         const singleItem = { ...ingredientData, count: 1 }
         const success = store.addIngredientToAppliance(applianceId, singleItem)
@@ -620,6 +663,24 @@ export function useDragDrop(options) {
         const outputCount = dishData.count || 1
         const isPrepared = !!preparedIngredients[dishData.id]
         const itemType = isPrepared ? 'prepared' : 'dish'
+        
+        // 垃圾桶特殊处理
+        if (targetAppData?.type === 'trash') {
+          const trashBin = applianceStates[applianceId]
+          const capacity = targetAppData.capacity || 20
+          
+          // 每个成品占用一个垃圾位
+          for (let i = 0; i < outputCount; i++) {
+            if ((trashBin.trashCount || 0) < capacity) {
+              store.addTrashToTrashBin(applianceId, dishData)
+            }
+          }
+          store.resetAppliance(sourceApplianceId)
+          const countText = outputCount > 1 ? ` x${outputCount}` : ''
+          showToast(`🗑️ 丢弃了 ${dishData.name}${countText}`, 'success')
+          draggingFromAppliance.value = null
+          return
+        }
         
         const success = store.addIngredientToAppliance(applianceId, {
           id: dishData.id,
@@ -1018,6 +1079,98 @@ export function useDragDrop(options) {
     })
     
     showToast(`✅ 继续加工 ${outputDish.name}`, 'success')
+  }
+  
+  /**
+   * 处理物品丢入垃圾桶
+   */
+  function handleDropToTrashBin(item, trashBinId) {
+    const trashBin = applianceStates[trashBinId]
+    const trashBinData = appliances[trashBinId]
+    
+    if (!trashBin || trashBinData?.type !== 'trash') return
+    
+    // 检查垃圾桶容量
+    const currentCount = trashBin.trashCount || 0
+    const capacity = trashBinData.capacity || 20
+    
+    if (currentCount >= capacity) {
+      showToast(`❌ 垃圾桶已满，请先清理`, 'error')
+      return
+    }
+    
+    // 根据来源处理
+    if (item.source === 'inventory') {
+      // 从食材库存丢入
+      if ((inventory[item.id] || 0) <= 0) {
+        showToast(`❌ ${item.name} 库存不足`, 'error')
+        return
+      }
+      inventory[item.id]--
+      store.addTrashToTrashBin(trashBinId, item)
+      showToast(`🗑️ 丢弃了 ${item.name}`, 'success')
+      
+    } else if (item.source === 'prepared_list') {
+      // 从备菜区丢入
+      const index = preparedItems.value.findIndex(p => p.id === item.id)
+      if (index !== -1) {
+        preparedItems.value.splice(index, 1)
+        store.addTrashToTrashBin(trashBinId, item)
+        showToast(`🗑️ 丢弃了 ${item.name}`, 'success')
+      }
+      
+    } else if (item.source === 'seasoning_bar') {
+      // 调料丢入（不消耗库存，只是记录垃圾）
+      store.addTrashToTrashBin(trashBinId, item)
+      showToast(`🗑️ 丢弃了 ${item.name}`, 'success')
+      
+    } else if (item.source === 'appliance') {
+      // 从厦具丢入
+      const sourceApplianceId = item.sourceApplianceId
+      const slotIndex = item.sourceSlotIndex
+      const sourceAppliance = applianceStates[sourceApplianceId]
+      
+      if (!sourceAppliance) return
+      
+      // 处理已完成的成品（从 outputDish）
+      if (sourceAppliance.status === 'done' && sourceAppliance.outputDish) {
+        const outputCount = sourceAppliance.outputDish.count || 1
+        // 每个成品占用一个垃圾位
+        for (let i = 0; i < outputCount; i++) {
+          if ((trashBin.trashCount || 0) < capacity) {
+            store.addTrashToTrashBin(trashBinId, item)
+          }
+        }
+        store.resetAppliance(sourceApplianceId)
+        const countText = outputCount > 1 ? ` x${outputCount}` : ''
+        showToast(`🗑️ 丢弃了 ${item.name}${countText}`, 'success')
+        return
+      }
+      
+      // 处理槽位中的食材
+      if (slotIndex !== null && sourceAppliance.ingredients[slotIndex]) {
+        const ingredientData = sourceAppliance.ingredients[slotIndex]
+        const currentIngCount = ingredientData.count || 1
+        
+        // 丢弃一个
+        store.addTrashToTrashBin(trashBinId, item)
+        
+        // 处理堆叠
+        if (currentIngCount > 1) {
+          sourceAppliance.ingredients[slotIndex] = {
+            ...ingredientData,
+            count: currentIngCount - 1
+          }
+        } else {
+          sourceAppliance.ingredients.splice(slotIndex, 1)
+          if (sourceAppliance.ingredients.length === 0) {
+            sourceAppliance.status = 'idle'
+          }
+        }
+        
+        showToast(`🗑️ 丢弃了 ${item.name}`, 'success')
+      }
+    }
   }
   
   // 清空所有拖拽状态

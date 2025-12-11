@@ -8,6 +8,7 @@
 import { useGameStore } from '../stores/gameStore'
 import { preparedIngredients } from '../data/ingredients'
 import { findMatchingDishWithCount } from '../data/dishes'
+import { appliances } from '../data/appliances'
 
 /**
  * 烹饪系统
@@ -58,7 +59,24 @@ export function useCooking({ applianceStates, showToast, isShopOpen }) {
     }
     
     const appliance = applianceStates[applianceId]
-    if (!appliance || appliance.status !== 'hasIngredients') return
+    if (!appliance) return
+    
+    // 垃圾桶特殊处理：清理垃圾
+    const applianceData = appliances[applianceId]
+    if (applianceData?.type === 'trash') {
+      if (appliance.status !== 'hasIngredients') return
+      if (!appliance.trashCount || appliance.trashCount <= 0) {
+        showToast('❌ 垃圾桶是空的', 'error')
+        return
+      }
+      const store = useGameStore()
+      if (store.startEmptyingTrash(applianceId)) {
+        showToast('🗑️ 正在清理垃圾桶...', 'success')
+      }
+      return
+    }
+    
+    if (appliance.status !== 'hasIngredients') return
     
     // 先尝试匹配菜品配方（使用新的多份产出逻辑）
     const matchResult = findMatchingDishWithCount(appliance.ingredients, applianceId)

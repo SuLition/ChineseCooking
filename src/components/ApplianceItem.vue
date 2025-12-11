@@ -24,6 +24,9 @@ const emit = defineEmits(['dragover', 'dragleave', 'drop', 'start-cooking', 'cle
 // 获取厨具数据
 const applianceData = computed(() => appliances[props.applianceId])
 
+// 是否是垃圾桶
+const isTrashBin = computed(() => applianceData.value?.type === 'trash')
+
 // 获取厨具尺寸
 const gridCols = computed(() => applianceData.value?.gridSize?.cols || 2)
 const gridRows = computed(() => applianceData.value?.gridSize?.rows || 2)
@@ -47,7 +50,8 @@ const actionButtonText = computed(() => {
     wok: '🔥 翻炒',
     steamer: '♨️ 蒸制',
     mixer: '🥤 搅拌',
-    grill: '🔥 烘烤'
+    grill: '🔥 烘烤',
+    trash_bin: '🗑️ 清理'
   }
   return actionMap[props.applianceId] || '✅ 开始'
 })
@@ -75,6 +79,18 @@ function getDragTargetClass() {
   if (!props.draggingIngredient) return ''
   
   const status = props.applianceState.status
+  
+  // 垃圾桶特殊处理：接受所有类型的物品
+  if (isTrashBin.value) {
+    // 只有空闲或有垃圾状态才能添加
+    if (status !== 'idle' && status !== 'hasIngredients') return 'drag-unavailable'
+    // 检查容量
+    const currentCount = props.applianceState.trashCount || 0
+    const capacity = applianceData.value?.capacity || 20
+    if (currentCount >= capacity) return 'drag-cannot-drop'
+    return 'drag-can-drop'
+  }
+  
   // 厨具必须是空闲、有食材或完成状态
   if (status !== 'idle' && status !== 'hasIngredients' && status !== 'done') return 'drag-unavailable'
   
@@ -91,6 +107,14 @@ function getDragTargetClass() {
 function getDisplayName() {
   const appliance = props.applianceState
   const data = applianceData.value
+  
+  // 垃圾桶特殊显示
+  if (isTrashBin.value) {
+    if (appliance.status === 'cleaning') return '🗑️ 清理中...'
+    const count = appliance.trashCount || 0
+    const capacity = data?.capacity || 20
+    return `垃圾桶: ${Math.round((count / capacity) * 100)}%`
+  }
   
   if (appliance.status === 'burned') return burnedText.value
   if (appliance.status === 'cleaning') return '🧹 清理中...'
@@ -276,16 +300,59 @@ function handleSlotDragEnd(e) {
     @mouseenter="showActions = true"
     @mouseleave="showActions = false"
   >
-    <!-- 空闲状态：显示厨具图片 -->
-    <div class="appliance-icon" v-if="applianceState.status === 'idle'">
+    <!-- 空闲状态：显示厨具图片（垃圾桶使用特殊布局） -->
+    <div class="appliance-icon" v-if="applianceState.status === 'idle' && !isTrashBin">
       <img v-if="applianceData?.image" :src="applianceData.image" :alt="applianceData.name" class="appliance-img" />
       <span v-else>{{ applianceData?.icon || '❓' }}</span>
     </div>
     
-    <!-- 有食材或处理中或完成状态：动态布局 -->
+    <!-- 垃圾桶特殊布局：容量槽 + 清理按钮 -->
+    <div 
+      class="trash-bin-layout" 
+      v-if="isTrashBin && (applianceState.status === 'idle' || applianceState.status === 'hasIngredients')"
+    >
+      <!-- 容量显示区域 -->
+      <div class="trash-capacity-container">
+        <div class="trash-capacity-empty"></div>
+        <div 
+          class="trash-capacity-fill" 
+          :style="{ height: ((applianceState.trashCount || 0) / (applianceData?.capacity || 20) * 100) + '%' }"
+        ></div>
+      </div>
+      <!-- 底部操作区域 -->
+      <div class="trash-action-row">
+        <span class="trash-label">{{ getDisplayName() }}</span>
+        <button 
+          class="action-btn trash-clean-btn" 
+          @click.stop="handleStartCooking"
+          :disabled="!applianceState.trashCount || applianceState.trashCount <= 0"
+        >
+          清理
+        </button>
+      </div>
+    </div>
+    
+    <!-- 垃圾桶清理中状态 -->
+    <div class="trash-bin-layout" v-else-if="isTrashBin && applianceState.status === 'cleaning'">
+      <div class="trash-capacity-container">
+        <div class="trash-capacity-empty"></div>
+        <div 
+          class="trash-capacity-fill cleaning" 
+          :style="{ height: ((applianceState.trashCount || 0) / (applianceData?.capacity || 20) * 100) + '%' }"
+        ></div>
+      </div>
+      <div class="trash-action-row">
+        <span class="trash-label">清理中...</span>
+        <div class="trash-progress">
+          <div class="trash-progress-fill" :style="{ width: applianceState.progress + '%' }"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 有食材或处理中或完成状态：动态布局（垃圾桶除外） -->
     <div 
       class="has-ingredients-layout" 
-      v-else-if="applianceState.status === 'hasIngredients' || applianceState.status === 'processing' || applianceState.status === 'done'"
+      v-else-if="!isTrashBin && (applianceState.status === 'hasIngredients' || applianceState.status === 'processing' || applianceState.status === 'done')"
       :style="{ 
         gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
         gridTemplateRows: `repeat(${contentRows}, minmax(0, 1fr)) auto`
@@ -361,11 +428,11 @@ function handleSlotDragEnd(e) {
       <span>🧹</span>
     </div>
     
-    <!-- 厨具名称/状态（只在空闲、烧焦、清理状态显示） -->
-    <div class="appliance-name" v-if="applianceState.status === 'idle' || applianceState.status === 'burned' || applianceState.status === 'cleaning'">{{ getDisplayName() }}</div>
+    <!-- 厨具名称/状态（只在空闲、烧焦、清理状态显示，垃圾桶除外） -->
+    <div class="appliance-name" v-if="!isTrashBin && (applianceState.status === 'idle' || applianceState.status === 'burned' || applianceState.status === 'cleaning')">{{ getDisplayName() }}</div>
 
-    <!-- 清理进度条 -->
-    <div class="appliance-progress" v-if="applianceState.status === 'cleaning'">
+    <!-- 清理进度条（垃圾桶除外） -->
+    <div class="appliance-progress" v-if="!isTrashBin && applianceState.status === 'cleaning'">
       <div class="progress-fill" :style="{ width: applianceState.progress + '%' }"></div>
     </div>
 
@@ -752,6 +819,103 @@ function handleSlotDragEnd(e) {
 .inline-burn-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--success-green), var(--warning-orange), var(--danger-red));
+  transition: width 0.1s;
+}
+
+/* 垃圾桶特殊样式 */
+.trash-bin-layout {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  box-sizing: border-box;
+  gap: 8px;
+}
+
+.trash-capacity-container {
+  flex: 1;
+  position: relative;
+  border: 1px solid #555;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.trash-capacity-empty {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.trash-capacity-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #a3e635;
+  transition: height 0.3s ease;
+}
+
+.trash-capacity-fill.cleaning {
+  animation: trash-cleaning-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes trash-cleaning-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.trash-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 28px;
+}
+
+.trash-label {
+  font-size: 11px;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+
+.trash-clean-btn {
+  padding: 4px 12px;
+  background: var(--success-green);
+  color: white;
+  border: 1px solid var(--success-green);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.trash-clean-btn:hover:not(:disabled) {
+  background: #22c55e;
+}
+
+.trash-clean-btn:disabled {
+  background: #555;
+  border-color: #555;
+  color: #888;
+  cursor: not-allowed;
+}
+
+.trash-progress {
+  flex: 1;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.trash-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--warning-orange), var(--success-green));
   transition: width 0.1s;
 }
 </style>
