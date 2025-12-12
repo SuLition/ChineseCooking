@@ -31,8 +31,8 @@ import {
  * @param {Ref} options.userApplianceLayout - 厨具布局
  * @param {Function} options.showToast - 显示提示函数
  * @param {Function} options.addItemToPlate - 添加食材到盘子
+ * @param {Function} options.handlePlateDropOnAppliance - 盘子拖放到厨具的回调
  * @param {Function} options.onIngredientDragStart - 食材拖动开始回调（用于随机事件检查）
- * @param {Function} options.onSeasoningDrop - 调料放入回调（用于随机事件检查）
  * @param {number} options.GRID_COLS - 网格列数
  * @param {number} options.GRID_ROWS - 网格行数
  */
@@ -46,8 +46,8 @@ export function useDragDrop(options) {
     userApplianceLayout,
     showToast,
     addItemToPlate,
+    handlePlateDropOnAppliance,
     onIngredientDragStart,
-    onSeasoningDrop,
     GRID_COLS = 10,
     GRID_ROWS = 5
   } = options
@@ -98,9 +98,11 @@ export function useDragDrop(options) {
 
   // ========== 包装厨具拖放方法 ==========
   
-  // 包装 handleApplianceDrop，传入清空状态回调
-  function handleApplianceDropWrapper(e, applianceId, handlePlateDropOnAppliance) {
-    applianceDrop.handleApplianceDrop(e, applianceId, handlePlateDropOnAppliance, () => itemDrag.clearDragStates())
+  // 包装 handleApplianceDrop，内部处理盘子拖放回调
+  function handleApplianceDropWrapper(e, applianceId) {
+    applianceDrop.handleApplianceDrop(e, applianceId, (appId) => {
+      handlePlateDropOnAppliance?.(appId, sectionDrop.draggingPlateIndex.value)
+    }, () => itemDrag.clearDragStates())
   }
 
   // ========== 返回接口 ==========

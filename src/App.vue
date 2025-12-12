@@ -28,13 +28,21 @@ import SeasoningsSection from './components/SeasoningsSection.vue'
 import { useGame, useDragDrop, useCooking, useApplianceGrid } from './game'
 import { usePlates } from './game/composables/usePlates'
 import { useAutoCook } from './game/composables/useAutoCook'
-import { useGameStore } from './game/stores/gameStore'
-import { rawIngredients, preparedIngredients, seasonings } from './game/data/ingredients'
-import { appliances } from './game/data/appliances'
-import { dishes } from './game/data/dishes'
-import { GRID, APPLIANCE_STATUS, PLATE_STATUS } from './game/constants'
+import { preparedIngredients } from './game/data/ingredients'
+import { GRID, PLATE_STATUS } from './game/constants'
 
-// ========== 初始化游戏 ==========
+// ============================================================
+// 系统初始化顺序（严格按依赖关系排序）
+// 1. 游戏核心系统 (useGame) - 基础系统，无依赖
+// 2. 盘子系统 (usePlates) - 依赖 userData, randomEventsSystem
+// 3. 拖拽系统 (useDragDrop) - 依赖 plates, applianceStates
+// 4. 烹饪系统 (useCooking) - 依赖 applianceStates
+// 5. 自动做菜系统 (useAutoCook) - 依赖 plates, handleStartCooking
+// 6. 网格布局系统 (useApplianceGrid) - 依赖 userApplianceLayout
+// ============================================================
+
+// ========== 1. 初始化游戏核心系统 ==========
+// 包含：Store, TimeSystem, CustomerSystem, SoundSystem, RandomEventsSystem, DebugSystem
 const {
   // 状态
   state,
@@ -54,6 +62,9 @@ const {
   timePeriodName,
   goalProgress,
   ingredientList,
+  userIngredientList,
+  ownedApplianceIds,
+  stackedPreparedItems,
   
   // 游戏控制
   startGame,
@@ -75,6 +86,8 @@ const {
   
   // 库存操作
   buyIngredient,
+  handleBuyIngredient,
+  handleBuyAppliance,
   
   // UI 辅助
   showToast,
@@ -100,29 +113,8 @@ const {
   handleThiefOption
 } = useGame()
 
-// 只显示用户拥有库存的食材
-const userIngredientList = computed(() => {
-  return ingredientList.value.filter(ing => (inventory[ing.id] || 0) > 0)
-})
-
-// 已拥有的厨具ID列表
-const ownedApplianceIds = computed(() => {
-  return Object.keys(applianceStates)
-})
-
-// ========== UI 状态 ==========
-const showSoundPanel = ref(false)
-const showUpgradePanel = ref(false)
-const showShopPanel = ref(false)
-const showEventModal = ref(false)
-const currentEvent = ref(null)
-const achievement = ref(null)
-const showCombo = computed(() => state.combo >= 2)
-
-// 调试弹窗
-const showDebugModal = ref(false)
-
-// ========== 初始化盘子系统 ==========
+// ========== 2. 初始化盘子系统 ==========
+// 管理盘子状态、清洗、装盘、上菜等功能
 const {
   plates,
   initPlates,
@@ -141,18 +133,8 @@ const {
   applianceStates
 })
 
-// 调料撒事件处理
-function handleSeasoningDrop(seasoning) {
-  const result = randomEventsSystem.checkSeasoningSpill(seasoning)
-  if (result.triggered) {
-    // 撒掉部分调料
-    const store = useGameStore()
-    store.spillSeasoning(seasoning.id, result.spillAmount)
-  }
-  return result
-}
-
-// ========== 初始化拖拽系统 ==========
+// ========== 3. 初始化拖拽系统 ==========
+// 管理食材、厨具、盘子的拖拽交互
 const { COLS: GRID_COLS, ROWS: GRID_ROWS } = GRID
 
 const {
@@ -196,7 +178,7 @@ const {
   // 厨具区域拖放
   handleApplianceDragOver,
   handleApplianceDragLeave,
-  handleApplianceDrop: _handleApplianceDrop,
+  handleApplianceDrop,
   
   // 盘子拖放
   handlePlateDragStart,
@@ -221,13 +203,14 @@ const {
   userApplianceLayout,
   showToast,
   addItemToPlate,
+  handlePlateDropOnAppliance,
   onIngredientDragStart: (ingredient) => randomEventsSystem.checkIngredientDrop(ingredient),
-  onSeasoningDrop: handleSeasoningDrop,
   GRID_COLS,
   GRID_ROWS
 })
 
-// ========== 初始化烹饪系统 ==========
+// ========== 4. 初始化烹饪系统 ==========
+// 管理厨具烹饪逻辑
 const {
   handleStartCooking,
   handleClearAppliance
@@ -237,7 +220,8 @@ const {
   isShopOpen: () => state.isOpen
 })
 
-// ========== 初始化自动做菜系统 ==========
+// ========== 5. 初始化自动做菜系统 ==========
+// AI 自动烹饪功能
 const {
   enabled: autoCookEnabled,
   toggle: toggleAutoCook
@@ -255,103 +239,33 @@ const {
   handleStartCooking
 })
 
-// ========== 提供给子组件的方法 ==========
-provide('clickAppliance', clickAppliance)
-provide('repairAppliance', (applianceId) => randomEventsSystem.repairAppliance(applianceId))
-provide('handleSpecialAction', (applianceId) => randomEventsSystem.handleSpecialEventAction(applianceId))
-provide('getEventConfig', (applianceId) => randomEventsSystem.getApplianceEventConfig(applianceId))
-
-// 包装 handleApplianceDrop，传入盘子装盘回调
-function handleApplianceDrop(e, applianceId) {
-  _handleApplianceDrop(e, applianceId, (appId) => {
-    handlePlateDropOnAppliance(appId, draggingPlateIndex.value)
-  })
-}
-
-// ========== 初始化网格布局系统 ==========
+// ========== 6. 初始化网格布局系统 ==========
+// 管理厨具网格布局
 const {
   occupiedCells,
   emptySlots,
   getApplianceGridStyle
 } = useApplianceGrid({ userApplianceLayout })
 
-// 备菜堆叠计算属性 - 将相同备菜合并并计算数量
-const stackedPreparedItems = computed(() => {
-  const stacks = {}
-  preparedItems.value.forEach(item => {
-    if (stacks[item.id]) {
-      stacks[item.id].count++
-    } else {
-      stacks[item.id] = {
-        id: item.id,
-        count: 1
-      }
-    }
-  })
-  return Object.values(stacks)
-})
+// ============================================================
+// UI 状态
+// ============================================================
+const showSoundPanel = ref(false)
+const showUpgradePanel = ref(false)
+const showShopPanel = ref(false)
+const showEventModal = ref(false)
+const currentEvent = ref(null)
+const achievement = ref(null)
+const showCombo = computed(() => state.combo >= 2)
+const showDebugModal = ref(false)
 
-// ========== 方法 ==========
-function handleStartGame() {
-  startGame()
-}
-
-function handleEventOption(index) {
-  showEventModal.value = false
-  currentEvent.value = null
-}
-
-// 购买食材
-function handleBuyIngredient(ingredientId, count, price) {
-  if (buyIngredient(ingredientId, count, price)) {
-    const info = rawIngredients[ingredientId]
-    showToast(`购买了 ${count} 个 ${info?.name || ingredientId}`, 'money')
-  } else {
-    showToast('金币不足！', 'error')
-  }
-}
-
-// 购买设备
-function handleBuyAppliance(applianceId, price) {
-  // 检查是否已拥有
-  if (applianceStates[applianceId]) {
-    showToast('已经拥有该设备！', 'error')
-    return
-  }
-  // 检查金币
-  if (state.money < price) {
-    showToast('金币不足！', 'error')
-    return
-  }
-  // 扣除金币
-  state.money -= price
-  // 添加厨具
-  const applianceData = appliances[applianceId]
-  if (applianceData) {
-    applianceStates[applianceId] = {
-      ...applianceData,
-      items: [],
-      status: APPLIANCE_STATUS.IDLE,
-      progress: 0,
-      resultDish: null,
-      burnProgress: 0
-    }
-    showToast(`购买了 ${applianceData.name}`, 'money')
-  }
-}
-
-// ========== 调试功能 ==========
-
-// 切换顾客生成
-function handleToggleCustomerSpawn() {
-  const enabled = toggleCustomerSpawn()
-  showToast(`[调试] 顾客生成: ${enabled ? '自动' : '手动'}`, enabled ? 'success' : 'warning')
-}
-
-// 获取厨具事件配置（保留给其他地方使用）
-function getEventConfig(applianceId) {
-  return randomEventsSystem.getApplianceEventConfig(applianceId)
-}
+// ============================================================
+// 提供给子组件的方法
+// ============================================================
+provide('clickAppliance', clickAppliance)
+provide('repairAppliance', (applianceId) => randomEventsSystem.repairAppliance(applianceId))
+provide('handleSpecialAction', (applianceId) => randomEventsSystem.handleSpecialEventAction(applianceId))
+provide('getEventConfig', (applianceId) => randomEventsSystem.getApplianceEventConfig(applianceId))
 
 </script>
 
@@ -388,7 +302,7 @@ function getEventConfig(applianceId) {
       :events-enabled="randomEventsSystem.eventsEnabled.value"
       :current-day="state.day"
       @close="showDebugModal = false"
-      @toggle-spawn="handleToggleCustomerSpawn"
+      @toggle-spawn="toggleCustomerSpawn"
       @spawn-customer="debugSpawnCustomer"
       @clear-customers="debugClearAllCustomers"
       @remove-customer="debugRemoveCustomer"

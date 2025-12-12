@@ -46,7 +46,9 @@ export function useDebug(options) {
    */
   function toggleCustomerSpawn() {
     debugState.value.customerSpawnEnabled = !debugState.value.customerSpawnEnabled
-    return debugState.value.customerSpawnEnabled
+    const enabled = debugState.value.customerSpawnEnabled
+    showToast?.(`[调试] 顾客生成: ${enabled ? '自动' : '手动'}`, enabled ? 'success' : 'warning')
+    return enabled
   }
 
   /**

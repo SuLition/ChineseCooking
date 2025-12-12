@@ -651,6 +651,38 @@ export function useGame() {
    * 获取食材列表
    */
   const ingredientList = computed(() => getIngredientList())
+
+  /**
+   * 只显示用户拥有库存的食材
+   */
+  const userIngredientList = computed(() => {
+    return ingredientList.value.filter(ing => (store.inventory[ing.id] || 0) > 0)
+  })
+
+  /**
+   * 已拥有的厨具ID列表
+   */
+  const ownedApplianceIds = computed(() => {
+    return Object.keys(store.applianceStates)
+  })
+
+  /**
+   * 备菜堆叠计算属性 - 将相同备菜合并并计算数量
+   */
+  const stackedPreparedItems = computed(() => {
+    const stacks = {}
+    store.preparedItems.value.forEach(item => {
+      if (stacks[item.id]) {
+        stacks[item.id].count++
+      } else {
+        stacks[item.id] = {
+          id: item.id,
+          count: 1
+        }
+      }
+    })
+    return Object.values(stacks)
+  })
   
   /**
    * 切换食材选择
@@ -684,6 +716,55 @@ export function useGame() {
    * 获取目标进度
    */
   const goalProgress = computed(() => store.goalProgress.value)
+
+  // ========== 商店操作 ==========
+
+  /**
+   * 购买食材
+   */
+  function handleBuyIngredient(ingredientId, count, price) {
+    if (store.buyIngredient(ingredientId, count, price)) {
+      const info = rawIngredients[ingredientId]
+      showToast(`购买了 ${count} 个 ${info?.name || ingredientId}`, 'money')
+      return true
+    } else {
+      showToast('金币不足！', 'error')
+      return false
+    }
+  }
+
+  /**
+   * 购买设备
+   */
+  function handleBuyAppliance(applianceId, price) {
+    // 检查是否已拥有
+    if (store.applianceStates[applianceId]) {
+      showToast('已经拥有该设备！', 'error')
+      return false
+    }
+    // 检查金币
+    if (store.state.money < price) {
+      showToast('金币不足！', 'error')
+      return false
+    }
+    // 扣除金币
+    store.state.money -= price
+    // 添加厨具
+    const applianceData = appliances[applianceId]
+    if (applianceData) {
+      store.applianceStates[applianceId] = {
+        ...applianceData,
+        items: [],
+        status: APPLIANCE_STATUS.IDLE,
+        progress: 0,
+        resultDish: null,
+        burnProgress: 0
+      }
+      showToast(`购买了 ${applianceData.name}`, 'money')
+      return true
+    }
+    return false
+  }
   
   // ========== 生命周期 ==========
   
@@ -711,6 +792,9 @@ export function useGame() {
     timePeriodName,
     goalProgress,
     ingredientList,
+    userIngredientList,
+    ownedApplianceIds,
+    stackedPreparedItems,
     
     // 游戏控制
     startGame,
@@ -741,6 +825,8 @@ export function useGame() {
     getInventory: store.getInventory,
     buyIngredient: store.buyIngredient,
     hasEnoughIngredients: store.hasEnoughIngredients,
+    handleBuyIngredient,
+    handleBuyAppliance,
     
     // 用户数据
     userData: store.userData,
