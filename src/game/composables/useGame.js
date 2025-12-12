@@ -310,7 +310,7 @@ export function useGame() {
     // 顾客生成循环（初始立即检测一次，然后每20秒检测）
     // 开店时强制生成1-2个顾客
     if (debugState.value.customerSpawnEnabled) {
-      const initialCount = Math.random() < 0.5 ? 1 : 2
+      const initialCount = 1
       for (let i = 0; i < initialCount; i++) {
         const newCustomer = customerSystem.spawnCustomer()  // 强制生成
         if (newCustomer) {

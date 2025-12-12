@@ -8,6 +8,7 @@
 import { getRandomCustomerType } from '../data/customers'
 import { getAvailableDishesByLevel, getSuggestedPatience, dishes, getPreparedCount, getSeasoningCount } from '../data/dishes'
 import { gameConfig } from '../data/config'
+import { appliances } from '../data/appliances'
 
 export class CustomerSystem {
   constructor(store, timeSystem) {
@@ -41,6 +42,9 @@ export class CustomerSystem {
    * 从菜品创建顾客对象
    */
   createCustomerFromDish(dish, customerType, patience) {
+    // 获取厨具信息
+    const applianceData = appliances[dish.appliance]
+    
     return {
       id: ++this.customerIdCounter,
       typeId: customerType.id,
@@ -51,6 +55,11 @@ export class CustomerSystem {
       dishId: dish.id,
       dishIcon: dish.icon,
       dishImage: dish.image,
+      // 厨具信息
+      applianceId: dish.appliance,
+      applianceName: applianceData?.name || '',
+      applianceIcon: applianceData?.icon || '',
+      applianceImage: applianceData?.image || '',
       recipe: [...dish.recipe], // 新版配方
       patience: patience,
       maxPatience: patience,

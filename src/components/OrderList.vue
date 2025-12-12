@@ -37,6 +37,9 @@ function getRecipeTypeClass(type) {
     <div class="orders-scroll">
       <!-- 当前订单 -->
       <div v-if="currentCustomer" class="order-item active">
+
+
+        
         <!-- 菜品信息 -->
         <div class="order-dish-header">
           <div class="dish-icon-large">
@@ -46,6 +49,11 @@ function getRecipeTypeClass(type) {
           <div class="dish-info">
             <div class="dish-name">{{ currentCustomer.dish }}</div>
             <div class="dish-price">💰 {{ currentCustomer.reward }}</div>
+          </div>
+          <!-- 右上角厨具图标 -->
+          <div class="appliance-box">
+            <img v-if="currentCustomer.applianceImage" :src="currentCustomer.applianceImage" class="appliance-img" />
+            <span v-else class="appliance-icon">{{ currentCustomer.applianceIcon }}</span>
           </div>
         </div>
         
@@ -64,6 +72,13 @@ function getRecipeTypeClass(type) {
             </div>
           </div>
         </div>
+        
+        <!-- 耐心值 -->
+        <div class="order-patience">
+          <div class="patience-bar">
+            <div class="patience-fill" :style="{ width: (currentCustomer.patience / currentCustomer.maxPatience * 100) + '%' }"></div>
+          </div>
+        </div>
       </div>
       
       <!-- 等待中的订单 -->
@@ -73,6 +88,9 @@ function getRecipeTypeClass(type) {
         class="order-item pending"
         @click="emit('select-customer', customers.indexOf(customer))"
       >
+
+
+        
         <!-- 菜品信息 -->
         <div class="order-dish-header">
           <div class="dish-icon-large">
@@ -82,6 +100,11 @@ function getRecipeTypeClass(type) {
           <div class="dish-info">
             <div class="dish-name">{{ customer.dish }}</div>
             <div class="dish-price">💰 {{ customer.reward }}</div>
+          </div>
+          <!-- 右上角厨具图标 -->
+          <div class="appliance-box">
+            <img v-if="customer.applianceImage" :src="customer.applianceImage" class="appliance-img" />
+            <span v-else class="appliance-icon">{{ customer.applianceIcon }}</span>
           </div>
         </div>
         
@@ -154,6 +177,7 @@ function getRecipeTypeClass(type) {
   gap: 10px;
   transition: all 0.3s;
   cursor: pointer;
+  position: relative;
 }
 
 .order-item.active {
@@ -213,7 +237,31 @@ function getRecipeTypeClass(type) {
 .order-ingredients {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 6px;
-  padding: 6px 0;
+  padding: 8px 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+/* 厨具图标（右上角） */
+.appliance-box {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid var(--gold);
+  border-radius: 8px;
+  margin-left: auto;
+}
+
+.appliance-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.appliance-icon {
+  font-size: 28px;
 }
 
 .ingredients-list {
