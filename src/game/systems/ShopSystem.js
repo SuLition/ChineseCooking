@@ -1,8 +1,10 @@
 /**
  * 商店系统
  * Shop System
+ * 
+ * 统一调用 store 方法进行购买操作
  */
-import { reactive } from 'vue'
+import { useGameStore } from '../stores/gameStore'
 import { appliances, getPurchasableAppliances } from '../data/appliances'
 import { ingredientCategories, getIngredientItemById, buyQuantityOptions } from '../data/shopItems'
 import { rawIngredients } from '../data/ingredients'
@@ -10,12 +12,10 @@ import { rawIngredients } from '../data/ingredients'
 /**
  * 创建商店系统
  * @param {Object} options - 配置项
- * @param {Object} options.gameState - 游戏状态（包含 money）
- * @param {Object} options.inventory - 库存对象
- * @param {Object} options.applianceStates - 厨具状态
  * @param {Function} options.showToast - 显示提示函数
  */
-export function createShopSystem({ gameState, inventory, applianceStates, showToast }) {
+export function createShopSystem({ showToast }) {
+  const store = useGameStore()
   
   // ========== 食材购买 ==========
   
@@ -32,22 +32,13 @@ export function createShopSystem({ gameState, inventory, applianceStates, showTo
       return false
     }
     
-    const totalPrice = item.price * count
+    // 调用 store 统一购买方法
+    const success = store.buyIngredient(ingredientId, count, item.price)
     
-    // 检查金币
-    if (gameState.money < totalPrice) {
+    if (!success) {
       showToast?.('金币不足！', 'error')
       return false
     }
-    
-    // 扣除金币
-    gameState.money -= totalPrice
-    
-    // 增加库存
-    if (!inventory[ingredientId]) {
-      inventory[ingredientId] = 0
-    }
-    inventory[ingredientId] += count
     
     // 提示
     const info = rawIngredients[ingredientId]
@@ -62,7 +53,7 @@ export function createShopSystem({ gameState, inventory, applianceStates, showTo
    * @param {number} count - 数量
    */
   function canAffordIngredient(price, count = 1) {
-    return gameState.money >= price * count
+    return store.state.money >= price * count
   }
   
   /**
@@ -70,7 +61,7 @@ export function createShopSystem({ gameState, inventory, applianceStates, showTo
    * @param {string} ingredientId - 食材ID
    */
   function getIngredientStock(ingredientId) {
-    return inventory[ingredientId] || 0
+    return store.getInventory(ingredientId)
   }
   
   // ========== 设备购买 ==========
@@ -87,14 +78,14 @@ export function createShopSystem({ gameState, inventory, applianceStates, showTo
    * @param {string} applianceId - 厨具ID
    */
   function isApplianceOwned(applianceId) {
-    return !!applianceStates[applianceId]
+    return store.hasAppliance(applianceId)
   }
   
   /**
    * 获取已拥有的厨具ID列表
    */
   function getOwnedApplianceIds() {
-    return Object.keys(applianceStates)
+    return Object.keys(store.applianceStates)
   }
   
   /**
@@ -115,23 +106,12 @@ export function createShopSystem({ gameState, inventory, applianceStates, showTo
       return false
     }
     
-    // 检查金币
-    if (gameState.money < applianceData.price) {
+    // 调用 store 统一购买方法（会自动更新布局）
+    const success = store.buyAppliance(applianceId, applianceData.price)
+    
+    if (!success) {
       showToast?.('金币不足！', 'error')
       return false
-    }
-    
-    // 扣除金币
-    gameState.money -= applianceData.price
-    
-    // 添加厨具
-    applianceStates[applianceId] = {
-      ...applianceData,
-      items: [],
-      status: 'idle',
-      progress: 0,
-      resultDish: null,
-      burnProgress: 0
     }
     
     showToast?.(`购买了 ${applianceData.name}`, 'money')
@@ -146,7 +126,7 @@ export function createShopSystem({ gameState, inventory, applianceStates, showTo
     if (isApplianceOwned(applianceId)) return false
     const applianceData = appliances[applianceId]
     if (!applianceData) return false
-    return gameState.money >= applianceData.price
+    return store.state.money >= applianceData.price
   }
   
   // ========== 返回接口 ==========

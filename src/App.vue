@@ -25,14 +25,13 @@ import PlatesSection from './components/PlatesSection.vue'
 import SeasoningsSection from './components/SeasoningsSection.vue'
 
 // 导入游戏核心
-import { useGame, useDragDrop, useCooking } from './game'
+import { useGame, useDragDrop, useCooking, useApplianceGrid } from './game'
 import { usePlates } from './game/composables/usePlates'
 import { useGameStore } from './game/stores/gameStore'
 import { rawIngredients, preparedIngredients, seasonings } from './game/data/ingredients'
 import { appliances } from './game/data/appliances'
 import { dishes } from './game/data/dishes'
-import { internalEvents, difficultyMultipliers } from './game/events/internalEvents'
-import { externalEvents } from './game/events/externalEvents'
+import { GRID } from './game/constants'
 
 // ========== 初始化游戏 ==========
 const {
@@ -79,7 +78,7 @@ const {
   // UI 辅助
   showToast,
   
-  // 调试功能
+  // 调试功能（包含事件调试）
   debugState,
   toggleCustomerSpawn,
   debugSpawnCustomer,
@@ -87,6 +86,12 @@ const {
   debugClearAllCustomers,
   debugRemoveCustomer,
   dishList,
+  // 事件调试
+  toggleEvents,
+  updateProbability,
+  updateDifficulty,
+  triggerEvent,
+  resetCooldowns,
   
   // 随机事件系统
   randomEventsSystem,
@@ -149,8 +154,7 @@ function handleSeasoningDrop(seasoning) {
 }
 
 // ========== 初始化拖拽系统 ==========
-const GRID_COLS = 10
-const GRID_ROWS = 5
+const { COLS: GRID_COLS, ROWS: GRID_ROWS } = GRID
 
 const {
   // 拖拽状态
@@ -247,40 +251,12 @@ function handleApplianceDrop(e, applianceId) {
   })
 }
 
-// ========== 厨具网格布局计算 ==========
-
-// 计算被占用的格子位置
-const occupiedCells = computed(() => {
-  const occupied = new Set()
-  userApplianceLayout.value.forEach(app => {
-    for (let r = app.row; r < app.row + app.height; r++) {
-      for (let c = app.col; c < app.col + app.width; c++) {
-        occupied.add(`${r}-${c}`)
-      }
-    }
-  })
-  return occupied
-})
-
-// 生成空的格子列表
-const emptySlots = computed(() => {
-  const slots = []
-  for (let row = 1; row <= GRID_ROWS; row++) {
-    for (let col = 1; col <= GRID_COLS; col++) {
-      if (!occupiedCells.value.has(`${row}-${col}`)) {
-        slots.push({ row, col, key: `slot-${row}-${col}` })
-      }
-    }
-  }
-  return slots
-})
-
-// 获取厨具的grid-area样式
-function getApplianceGridStyle(app) {
-  return {
-    gridArea: `${app.row} / ${app.col} / ${app.row + app.height} / ${app.col + app.width}`
-  }
-}
+// ========== 初始化网格布局系统 ==========
+const {
+  occupiedCells,
+  emptySlots,
+  getApplianceGridStyle
+} = useApplianceGrid({ userApplianceLayout })
 
 // 备菜堆叠计算属性 - 将相同备菜合并并计算数量
 const stackedPreparedItems = computed(() => {
@@ -355,91 +331,6 @@ function handleToggleCustomerSpawn() {
   showToast(`[调试] 顾客生成: ${enabled ? '自动' : '手动'}`, enabled ? 'success' : 'warning')
 }
 
-// 手动生成顾客
-function handleDebugSpawnCustomer() {
-  debugSpawnCustomer()
-}
-
-// 手动生成指定数量的顾客
-function handleDebugSpawnCustomers(count) {
-  for (let i = 0; i < count; i++) {
-    debugSpawnCustomer()
-  }
-  if (count > 0) {
-    showToast(`[调试] 已生成 ${count} 个顾客`, 'success')
-  }
-}
-
-// 清空所有顾客
-function handleDebugClearCustomers() {
-  debugClearAllCustomers()
-}
-
-// 删除指定顾客
-function handleDebugRemoveCustomer(index) {
-  debugRemoveCustomer(index)
-}
-
-// 生成指定菜品
-function handleDebugSpawnDish(dishId) {
-  if (!dishId) {
-    showToast('[调试] 请先选择菜品', 'error')
-    return
-  }
-  debugSpawnDish(dishId)
-}
-
-// 切换事件系统
-function handleToggleEvents() {
-  const enabled = !randomEventsSystem.eventsEnabled.value
-  randomEventsSystem.setEventsEnabled(enabled)
-  showToast(`[调试] 事件系统: ${enabled ? '开启' : '关闭'}`, enabled ? 'success' : 'error')
-}
-
-// 更新事件概率
-function handleUpdateProbability({ type, eventId, probability }) {
-  if (type === 'internal' && internalEvents[eventId]) {
-    internalEvents[eventId].probability = probability
-    showToast(`[调试] ${internalEvents[eventId].name} 概率设为 ${(probability * 100).toFixed(1)}%`, 'success')
-  } else if (type === 'external' && externalEvents[eventId]) {
-    externalEvents[eventId].probability = probability
-    showToast(`[调试] ${externalEvents[eventId].name} 概率设为 ${(probability * 100).toFixed(1)}%`, 'success')
-  }
-}
-
-// 更新难度倍率
-function handleUpdateDifficulty({ level, multiplier }) {
-  if (difficultyMultipliers[level]) {
-    difficultyMultipliers[level].multiplier = multiplier
-    showToast(`[调试] ${level} 难度倍率设为 ${multiplier}x`, 'success')
-  }
-}
-
-// 手动触发事件
-function handleTriggerEvent({ type, eventId }) {
-  if (type === 'internal') {
-    // 内部事件需要根据事件类型处理
-    const eventConfig = internalEvents[eventId]
-    if (eventConfig) {
-      showToast(`[调试] 触发事件: ${eventConfig.name}`, 'warning')
-      // 这里可以根据事件类型调用对应的触发函数
-      console.log(`[调试] 触发内部事件: ${eventId}`)
-    }
-  } else if (type === 'external') {
-    const eventConfig = externalEvents[eventId]
-    if (eventConfig) {
-      showToast(`[调试] 触发事件: ${eventConfig.name}`, 'warning')
-      console.log(`[调试] 触发外部事件: ${eventId}`)
-    }
-  }
-}
-
-// 重置所有冷却
-function handleResetCooldowns() {
-  randomEventsSystem.resetAllCooldowns()
-  showToast('[调试] 所有事件冷却已重置', 'success')
-}
-
 // 获取厨具事件配置（保留给其他地方使用）
 function getEventConfig(applianceId) {
   return randomEventsSystem.getApplianceEventConfig(applianceId)
@@ -481,16 +372,16 @@ function getEventConfig(applianceId) {
       :current-day="state.day"
       @close="showDebugModal = false"
       @toggle-spawn="handleToggleCustomerSpawn"
-      @spawn-customer="handleDebugSpawnCustomer"
-      @spawn-customers="handleDebugSpawnCustomers"
-      @clear-customers="handleDebugClearCustomers"
-      @remove-customer="handleDebugRemoveCustomer"
-      @spawn-dish="handleDebugSpawnDish"
-      @toggle-events="handleToggleEvents"
-      @update-probability="handleUpdateProbability"
-      @update-difficulty="handleUpdateDifficulty"
-      @trigger-event="handleTriggerEvent"
-      @reset-cooldowns="handleResetCooldowns"
+      @spawn-customer="debugSpawnCustomer"
+      @spawn-customers="(count) => { for (let i = 0; i < count; i++) debugSpawnCustomer(); showToast(`[调试] 已生成 ${count} 个顾客`, 'success') }"
+      @clear-customers="debugClearAllCustomers"
+      @remove-customer="debugRemoveCustomer"
+      @spawn-dish="(id) => id ? debugSpawnDish(id) : showToast('[调试] 请先选择菜品', 'error')"
+      @toggle-events="toggleEvents"
+      @update-probability="updateProbability"
+      @update-difficulty="updateDifficulty"
+      @trigger-event="triggerEvent"
+      @reset-cooldowns="resetCooldowns"
     />
     
     <!-- 主内容区 -->

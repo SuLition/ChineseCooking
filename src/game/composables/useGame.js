@@ -16,6 +16,7 @@ import { getIngredientList, rawIngredients, preparedIngredients, getPreparedBySo
 import { dishes, getDishList } from '../data/dishes'
 import { appliances } from '../data/appliances'
 import { useRandomEvents } from '../events'
+import { useDebug } from './useDebug'
 
 export function useGame() {
   // 初始化 Store
@@ -31,11 +32,6 @@ export function useGame() {
   
   // 打烊状态：正在等待厨具完成
   let isClosing = false
-  
-  // 调试状态
-  const debugState = ref({
-    customerSpawnEnabled: true
-  })
   
   // Toast 消息队列
   const toasts = ref([])
@@ -62,6 +58,15 @@ export function useGame() {
     showToast,
     getCurrentDay: () => store.state.day,
     applianceStates: store.applianceStates
+  })
+  
+  // ========== 调试系统 ==========
+  
+  const debugSystem = useDebug({
+    customerSystem,
+    soundManager,
+    showToast,
+    randomEventsSystem  // 传递事件系统以支持事件调试
   })
   
   // 被虫子吃的食材ID（用于动画）
@@ -309,7 +314,7 @@ export function useGame() {
     
     // 顾客生成循环（初始立即检测一次，然后每20秒检测）
     // 开店时强制生成1-2个顾客
-    if (debugState.value.customerSpawnEnabled) {
+    if (debugSystem.isCustomerSpawnEnabled()) {
       const initialCount = 1
       for (let i = 0; i < initialCount; i++) {
         const newCustomer = customerSystem.spawnCustomer()  // 强制生成
@@ -334,7 +339,7 @@ export function useGame() {
       }
       
       // 尝试生成顾客（可被调试开关控制）
-      if (debugState.value.customerSpawnEnabled) {
+      if (debugSystem.isCustomerSpawnEnabled()) {
         // 网红激增时翻倍，正常1-3个
         const baseCount = Math.floor(Math.random() * 3) + 1  // 1-3个
         const spawnCount = isInfluencerActive.value ? baseCount * 2 : baseCount
@@ -679,72 +684,6 @@ export function useGame() {
    */
   const goalProgress = computed(() => store.goalProgress.value)
   
-  // ========== 调试功能 ==========
-  
-  /**
-   * 切换顾客生成开关
-   */
-  function toggleCustomerSpawn() {
-    debugState.value.customerSpawnEnabled = !debugState.value.customerSpawnEnabled
-    return debugState.value.customerSpawnEnabled
-  }
-  
-  /**
-   * 手动生成顾客
-   */
-  function debugSpawnCustomer() {
-    if (!store.state.isOpen) {
-      showToast('请先开店！', 'error')
-      return null
-    }
-    const customer = customerSystem.spawnCustomer()
-    if (customer) {
-      soundManager.playCustomerArrive()
-      showToast(`[调试] ${customer.icon} ${customer.name}来了`, 'success')
-    }
-    return customer
-  }
-  
-  /**
-   * 生成指定菜品的顾客
-   */
-  function debugSpawnDish(dishId) {
-    if (!store.state.isOpen) {
-      showToast('请先开店！', 'error')
-      return null
-    }
-    const customer = customerSystem.spawnCustomerWithDish(dishId)
-    if (customer) {
-      soundManager.playCustomerArrive()
-      showToast(`[调试] 生成订单: ${customer.dishIcon} ${customer.dish}`, 'success')
-    }
-    return customer
-  }
-  
-  /**
-   * 清空所有顾客
-   */
-  function debugClearAllCustomers() {
-    customerSystem.clearAllCustomers()
-    showToast('[调试] 已清空所有顾客', 'success')
-  }
-  
-  /**
-   * 删除指定索引的顾客
-   */
-  function debugRemoveCustomer(index) {
-    if (index >= 0 && index < store.customers.value.length) {
-      const customer = store.customers.value[index]
-      customerSystem.customerLeave(index, false)
-      showToast(`[调试] 已移除顾客: ${customer.icon} ${customer.name}`, 'success')
-    }
-  }
-  
-  /**
-   * 获取所有菜品列表
-   */
-  const dishList = computed(() => getDishList())
-  
   // ========== 生命周期 ==========
   
   onUnmounted(() => {
@@ -822,13 +761,7 @@ export function useGame() {
     soundManager,
     
     // 调试功能
-    debugState,
-    toggleCustomerSpawn,
-    debugSpawnCustomer,
-    debugSpawnDish,
-    debugClearAllCustomers,
-    debugRemoveCustomer,
-    dishList,
+    ...debugSystem,
     
     // 随机事件系统
     randomEventsSystem,

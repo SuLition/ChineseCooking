@@ -234,26 +234,77 @@ export function getItemData(type, id) {
 // ========== 拖拽预览 ==========
 
 /**
- * 创建拖拽预览元素
+ * 预览样式预设
  */
-export function createDragPreview(item) {
+export const PreviewStyles = {
+  // 默认方形卡片
+  DEFAULT: {
+    width: 80,
+    height: 80,
+    borderRadius: '8px',
+    borderColor: '#ffd700',
+    shadowColor: 'rgba(255, 215, 0, 0.4)',
+    iconSize: 40,
+    fontSize: 30
+  },
+  // 盘子圆形样式
+  PLATE: {
+    width: 100,
+    height: 100,
+    borderRadius: '50%',
+    borderColor: '#4ade80',
+    shadowColor: 'rgba(74, 222, 128, 0.4)',
+    iconSize: 50,
+    fontSize: 36
+  },
+  // 厨具布局拖拽（动态尺寸）
+  APPLIANCE: {
+    borderRadius: '8px',
+    borderColor: '#ffd700',
+    shadowColor: 'rgba(255, 215, 0, 0.4)'
+  }
+}
+
+/**
+ * 创建拖拽预览元素
+ * @param {Object} item - 物品数据 { image, icon, name }
+ * @param {Object} options - 可选配置
+ * @param {string} options.style - 预设样式 'default' | 'plate' | 'appliance'
+ * @param {number} options.width - 自定义宽度
+ * @param {number} options.height - 自定义高度
+ * @param {string} options.borderColor - 自定义边框颜色
+ * @returns {HTMLElement} 预览元素
+ */
+export function createDragPreview(item, options = {}) {
+  const stylePreset = options.style === 'plate' ? PreviewStyles.PLATE 
+    : options.style === 'appliance' ? PreviewStyles.APPLIANCE 
+    : PreviewStyles.DEFAULT
+
+  const width = options.width || stylePreset.width || 80
+  const height = options.height || stylePreset.height || 80
+  const borderRadius = options.borderRadius || stylePreset.borderRadius
+  const borderColor = options.borderColor || stylePreset.borderColor
+  const shadowColor = options.shadowColor || stylePreset.shadowColor
+  const iconSize = options.iconSize || stylePreset.iconSize || 40
+  const fontSize = options.fontSize || stylePreset.fontSize || 30
+
   const preview = document.createElement('div')
   preview.style.cssText = `
     position: fixed;
     top: -1000px;
     left: -1000px;
-    width: 80px;
-    height: 80px;
+    width: ${width}px;
+    height: ${height}px;
     background: rgba(0, 0, 0, 0.9);
-    border: 2px solid #ffd700;
-    border-radius: 8px;
+    border: 2px solid ${borderColor};
+    border-radius: ${borderRadius};
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 8px;
     box-sizing: border-box;
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 4px 15px ${shadowColor};
     z-index: 9999;
     pointer-events: none;
   `
@@ -261,12 +312,12 @@ export function createDragPreview(item) {
   if (item.image) {
     const img = document.createElement('img')
     img.src = item.image
-    img.style.cssText = 'width: 40px; height: 40px; object-fit: contain;'
+    img.style.cssText = `width: ${iconSize}px; height: ${iconSize}px; object-fit: contain;`
     preview.appendChild(img)
   } else {
     const icon = document.createElement('span')
     icon.textContent = item.icon || '❓'
-    icon.style.cssText = 'font-size: 30px;'
+    icon.style.cssText = `font-size: ${fontSize}px;`
     preview.appendChild(icon)
   }
 
@@ -280,10 +331,17 @@ export function createDragPreview(item) {
 
 /**
  * 设置拖拽图像并自动清理
+ * @param {DragEvent} e - 拖拽事件
+ * @param {Object} item - 物品数据
+ * @param {Object} options - 预览配置
  */
-export function setDragImage(e, item) {
-  const preview = createDragPreview(item)
+export function setDragImage(e, item, options = {}) {
+  const preview = createDragPreview(item, options)
   document.body.appendChild(preview)
-  e.dataTransfer.setDragImage(preview, 40, 40)
+  
+  const width = options.width || (options.style === 'plate' ? 100 : 80)
+  const height = options.height || (options.style === 'plate' ? 100 : 80)
+  
+  e.dataTransfer.setDragImage(preview, width / 2, height / 2)
   setTimeout(() => document.body.removeChild(preview), 0)
 }

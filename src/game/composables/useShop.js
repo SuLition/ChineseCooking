@@ -1,6 +1,8 @@
 /**
  * 商店组合式函数
  * useShop Composable
+ * 
+ * 简化参数，内部统一使用 store
  */
 import { ref, computed } from 'vue'
 import { createShopSystem } from '../systems/ShopSystem'
@@ -8,22 +10,14 @@ import { createShopSystem } from '../systems/ShopSystem'
 /**
  * 商店组合式函数
  * @param {Object} options - 配置项
- * @param {Object} options.gameState - 游戏状态
- * @param {Object} options.inventory - 库存对象
- * @param {Object} options.applianceStates - 厨具状态
  * @param {Function} options.showToast - 显示提示函数
  */
-export function useShop({ gameState, inventory, applianceStates, showToast }) {
+export function useShop({ showToast }) {
   // 当前激活的标签页
   const activeTab = ref('ingredients') // 'ingredients' | 'equipment'
   
   // 创建商店系统
-  const shopSystem = createShopSystem({
-    gameState,
-    inventory,
-    applianceStates,
-    showToast
-  })
+  const shopSystem = createShopSystem({ showToast })
   
   // 已拥有的厨具ID列表（计算属性）
   const ownedApplianceIds = computed(() => shopSystem.getOwnedApplianceIds())
