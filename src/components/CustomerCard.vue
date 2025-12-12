@@ -140,6 +140,8 @@ function handleDrop(e) {
   transition: all 0.2s;
   cursor: pointer;
   box-sizing: border-box;
+  /* 卡片基础样式 */
+  animation: customer-enter 0.4s ease-out;
 }
 
 .customer-card:hover {
@@ -154,7 +156,7 @@ function handleDrop(e) {
 
 .customer-card.special {
   border-color: var(--perfect-purple);
-  animation: special-glow 1s ease-in-out infinite;
+  animation: customer-enter 0.4s ease-out, special-glow 1s ease-in-out 0.4s infinite;
 }
 
 .customer-card.drag-over {
@@ -341,5 +343,20 @@ function handleDrop(e) {
 @keyframes special-glow {
   0%, 100% { box-shadow: 0 0 10px var(--perfect-purple); }
   50% { box-shadow: 0 0 20px var(--perfect-purple); }
+}
+
+/* 顾客入场动画 */
+@keyframes customer-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.8);
+  }
+  50% {
+    transform: translateY(5px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 </style>

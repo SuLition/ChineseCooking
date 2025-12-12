@@ -22,19 +22,19 @@ defineEmits(['option-click'])
   <div class="special-event" :class="{ active: visible && event }">
     <template v-if="event">
       <div class="event-icon">{{ event.icon }}</div>
-      <div class="event-title">{{ event.title }}</div>
-      <div class="event-desc">{{ event.desc }}</div>
+      <div class="event-title">{{ event.title || event.name }}</div>
+      <div class="event-desc">{{ event.desc || event.description }}</div>
       <div class="event-buttons">
         <button 
           v-for="(option, index) in event.options" 
-          :key="index"
+          :key="option.id || index"
           class="event-btn"
           :class="{ 
             positive: index === 0 && !option.negative,
             negative: option.negative,
             neutral: index > 0 && !option.negative
           }"
-          @click="$emit('option-click', index)"
+          @click="$emit('option-click', option.id || index)"
         >
           {{ option.text }}
         </button>

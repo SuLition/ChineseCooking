@@ -54,7 +54,13 @@ export function useInternalEvents(options) {
     // 调料事件冷却
     [EventTypes.SEASONING_SPILL]: 0,
     // 食材事件冷却
-    ingredient_bug: 0
+    ingredient_bug: 0,
+    // 停电事件冷却
+    power_outage: 0,
+    // 小偷事件冷却
+    thief: 0,
+    // 网红事件冷却
+    influencer: 0
   })
   
   // 事件是否启用
@@ -573,6 +579,189 @@ export function useInternalEvents(options) {
     return true
   }
 
+  // ========== 停电事件 ==========
+
+  /**
+   * 检查并触发停电事件
+   * @returns {boolean} 是否触发了事件
+   */
+  function checkPowerOutage() {
+    // 检查冷却
+    if (isEventOnCooldown('power_outage')) {
+      return false
+    }
+    
+    // 尝试触发
+    if (!tryTriggerEvent('power_outage')) {
+      return false
+    }
+    
+    // 触发停电事件
+    return triggerPowerOutage()
+  }
+
+  /**
+   * 触发停电事件
+   * @returns {boolean}
+   */
+  function triggerPowerOutage() {
+    // 设置冷却
+    setEventCooldown('power_outage')
+    
+    // 使用外部事件配置
+    const eventConfig = externalEvents.power_outage
+    if (!eventConfig) return false
+    
+    // 显示提示
+    showToast(eventConfig.messages?.trigger || '⚡ 突然停电了！', 'error')
+    
+    console.log(`[InternalEvent] 停电事件触发`)
+    
+    // 返回暂停时间（用于外部处理）
+    return true
+  }
+
+  /**
+   * 获取停电暂停时间
+   * @returns {number} 暂停时间（毫秒）
+   */
+  function getPowerOutageDuration() {
+    const eventConfig = externalEvents.power_outage
+    return eventConfig?.effect?.pauseCooking || 3000
+  }
+
+  // ========== 小偷事件 ==========
+
+  /**
+   * 检查并触发小偷事件
+   * @returns {Object|null} 触发时返回事件配置，否则返回null
+   */
+  function checkThief() {
+    // 检查冷却
+    if (isEventOnCooldown('thief')) {
+      return null
+    }
+    
+    // 尝试触发
+    if (!tryTriggerEvent('thief')) {
+      return null
+    }
+    
+    // 触发小偷事件
+    return triggerThief()
+  }
+
+  /**
+   * 触发小偷事件
+   * @returns {Object} 事件配置
+   */
+  function triggerThief() {
+    // 设置冷却
+    setEventCooldown('thief')
+    
+    // 使用外部事件配置
+    const eventConfig = externalEvents.thief
+    if (!eventConfig) return null
+    
+    // 显示提示
+    showToast(`${eventConfig.icon} ${eventConfig.name}来了！`, 'warning')
+    
+    console.log(`[ExternalEvent] 小偷事件触发`)
+    
+    return eventConfig
+  }
+
+  // ========== 网红事件 ==========
+
+  /**
+   * 检查并触发网红事件
+   * @returns {Object|null} 触发时返回事件配置，否则返回null
+   */
+  function checkInfluencer() {
+    // 检查冷却
+    if (isEventOnCooldown('influencer')) {
+      return null
+    }
+    
+    // 尝试触发
+    if (!tryTriggerEvent('influencer')) {
+      return null
+    }
+    
+    // 触发网红事件
+    return triggerInfluencer()
+  }
+
+  /**
+   * 触发网红事件
+   * @returns {Object} 事件配置
+   */
+  function triggerInfluencer() {
+    // 设置冷却
+    setEventCooldown('influencer')
+    
+    // 使用外部事件配置
+    const eventConfig = externalEvents.influencer
+    if (!eventConfig) return null
+    
+    // 显示提示
+    showToast(eventConfig.messages?.trigger || `${eventConfig.icon} ${eventConfig.name}！`, 'success')
+    
+    console.log(`[ExternalEvent] 网红事件触发`)
+    
+    return eventConfig
+  }
+
+  /**
+   * 获取网红事件持续时间
+   * @returns {number} 持续时间（毫秒）
+   */
+  function getInfluencerDuration() {
+    const eventConfig = externalEvents.influencer
+    return eventConfig?.effect?.customerBoost || 300000
+  }
+
+  // ========== 统一外部事件检查 ==========
+
+  /**
+   * 检查所有外部事件（小偷、虫子、停电、网红等）
+   * 返回触发的事件类型和相关数据
+   * @param {Object} context - 上下文数据
+   * @param {Array} context.ingredientsWithStock - 有库存的食材列表
+   * @returns {Object|null} { type: 'thief'|'bug'|'power_outage'|'influencer', data: ... }
+   */
+  function checkExternalEvents(context = {}) {
+    const { ingredientsWithStock = [] } = context
+    
+    // 1. 检查小偷事件（交互式）
+    const thiefEvent = checkThief()
+    if (thiefEvent) {
+      return { type: 'thief', data: thiefEvent }
+    }
+    
+    // 2. 检查网红事件（正面事件）
+    const influencerEvent = checkInfluencer()
+    if (influencerEvent) {
+      return { type: 'influencer', data: { duration: getInfluencerDuration() } }
+    }
+    
+    // 3. 检查虫子吃食材事件
+    if (ingredientsWithStock.length > 0) {
+      const randomIndex = Math.floor(Math.random() * ingredientsWithStock.length)
+      const ingredient = ingredientsWithStock[randomIndex]
+      if (checkIngredientBug(ingredient)) {
+        return { type: 'bug', data: ingredient }
+      }
+    }
+    
+    // 4. 检查停电事件
+    if (checkPowerOutage()) {
+      return { type: 'power_outage', data: { duration: getPowerOutageDuration() } }
+    }
+    
+    return null
+  }
+
   // ========== 系统控制 ==========
 
   /**
@@ -627,6 +816,20 @@ export function useInternalEvents(options) {
     
     // 食材事件
     checkIngredientBug,
+    
+    // 停电事件
+    checkPowerOutage,
+    getPowerOutageDuration,
+    
+    // 小偷事件
+    checkThief,
+    
+    // 网红事件
+    checkInfluencer,
+    getInfluencerDuration,
+    
+    // 统一外部事件检查
+    checkExternalEvents,
     
     // 强制触发（用于调试）
     triggerApplianceBreak,

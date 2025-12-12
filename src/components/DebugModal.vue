@@ -18,6 +18,7 @@ const props = defineProps({
   visible: { type: Boolean, default: false },
   customerSpawnEnabled: { type: Boolean, default: true },
   customerCount: { type: Number, default: 0 },
+  customers: { type: Array, default: () => [] },
   dishList: { type: Array, default: () => [] },
   eventsEnabled: { type: Boolean, default: true },
   currentDay: { type: Number, default: 1 }
@@ -27,6 +28,9 @@ const emit = defineEmits([
   'close',
   'toggle-spawn',
   'spawn-customer',
+  'spawn-customers',
+  'clear-customers',
+  'remove-customer',
   'spawn-dish',
   'toggle-events',
   'update-probability',
@@ -40,6 +44,9 @@ const activeTab = ref('general')
 
 // 菜品选择
 const selectedDish = ref('')
+
+// 手动生成顾客数量
+const manualSpawnCount = ref(1)
 
 // 本地事件概率副本（用于编辑）
 const localInternalProbabilities = reactive({})
@@ -112,6 +119,13 @@ const externalEventList = computed(() => {
 function handleSpawnDish() {
   if (selectedDish.value) {
     emit('spawn-dish', selectedDish.value)
+  }
+}
+
+// 手动生成指定数量的顾客
+function handleSpawnCustomers() {
+  if (manualSpawnCount.value > 0) {
+    emit('spawn-customers', manualSpawnCount.value)
   }
 }
 
@@ -194,20 +208,55 @@ function handleClose() {
           <div class="section">
             <h3 class="section-title">👥 顾客控制</h3>
             <div class="control-row">
-              <span>顾客生成</span>
+              <span>生成模式</span>
               <button 
                 class="toggle-btn" 
                 :class="{ active: customerSpawnEnabled }"
                 @click="emit('toggle-spawn')"
               >
-                {{ customerSpawnEnabled ? '开启' : '关闭' }}
+                {{ customerSpawnEnabled ? '自动' : '手动' }}
               </button>
             </div>
             <div class="control-row">
               <span>当前顾客: {{ customerCount }}</span>
-              <button class="action-btn" @click="emit('spawn-customer')">
-                🎲 随机生成
-              </button>
+              <div class="btn-group">
+                <button class="action-btn" @click="emit('spawn-customer')">
+                  +1
+                </button>
+                <button class="action-btn" @click="emit('remove-customer', 0)" :disabled="customerCount === 0">
+                  -1
+                </button>
+                <button class="action-btn danger" @click="emit('clear-customers')" :disabled="customerCount === 0">
+                  清空
+                </button>
+              </div>
+            </div>
+            <div class="control-row">
+              <span>手动生成</span>
+              <div class="spawn-control">
+                <select v-model.number="manualSpawnCount" class="spawn-select">
+                  <option v-for="n in 7" :key="n-1" :value="n-1">{{ n-1 }} 个</option>
+                </select>
+                <button class="action-btn" @click="handleSpawnCustomers">
+                  生成
+                </button>
+              </div>
+            </div>
+            <!-- 顾客列表 -->
+            <div v-if="customers.length > 0" class="customer-list-debug">
+              <div class="customer-list-header">顾客列表 (点击删除)</div>
+              <div class="customer-items">
+                <div 
+                  v-for="(customer, index) in customers" 
+                  :key="customer.id"
+                  class="customer-item"
+                  @click="emit('remove-customer', index)"
+                >
+                  <span class="customer-icon">{{ customer.icon }}</span>
+                  <span class="customer-dish">{{ customer.dish }}</span>
+                  <span class="remove-icon">✕</span>
+                </div>
+              </div>
             </div>
           </div>
           
@@ -282,7 +331,7 @@ function handleClose() {
         
         <!-- 外部事件标签页 -->
         <div v-if="activeTab === 'external'" class="tab-content">
-          <div class="events-header">
+          <div class="events-header external">
             <span>事件名称</span>
             <span>类型</span>
             <span>概率 (%)</span>
@@ -569,6 +618,116 @@ function handleClose() {
   color: #e0e7ff;
 }
 
+/* 顾客生成控制 */
+.spawn-control {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.spawn-select {
+  width: 80px;
+  padding: 6px 10px;
+  background: rgba(99, 102, 241, 0.2);
+  border: 2px solid #6366f1;
+  border-radius: 6px;
+  color: #e0e7ff;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.spawn-select:focus {
+  border-color: #a5b4fc;
+}
+
+.spawn-select option {
+  background: #1a1a2e;
+  color: #e0e7ff;
+}
+
+/* 按钮组 */
+.btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn.danger {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.action-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.4);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 顾客列表调试 */
+.customer-list-debug {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #4f46e5;
+}
+
+.customer-list-header {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.customer-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.customer-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #4f46e5;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #e0e7ff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.customer-item:hover {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.customer-item:hover .remove-icon {
+  color: #ef4444;
+}
+
+.customer-icon {
+  font-size: 14px;
+}
+
+.customer-dish {
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove-icon {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-left: 2px;
+}
+
 /* 事件列表样式 */
 .events-header {
   display: grid;
@@ -580,6 +739,10 @@ function handleClose() {
   margin-bottom: 8px;
   font-size: 12px;
   color: #94a3b8;
+}
+
+.events-header.external {
+  grid-template-columns: 1fr 60px 80px 80px;
 }
 
 .events-header span:nth-child(2),

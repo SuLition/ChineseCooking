@@ -23,6 +23,8 @@ export const appliances = {
     cleanTime: 2000,
     // 购买价格
     price: 0,
+    // 是否需要电力
+    requiresPower: false,
     // 描述
     description: '将食材切成合适大小'
   },
@@ -39,6 +41,8 @@ export const appliances = {
     burnTime: 5000,  // 完成后5秒会烧焦
     cleanTime: 3000,
     price: 0,
+    // 用火，不需要电
+    requiresPower: false,
     description: '翻炒食材'
   },
   
@@ -54,6 +58,8 @@ export const appliances = {
     burnTime: 8000,
     cleanTime: 2000,
     price: 200,
+    // 电蒸箱，需要电
+    requiresPower: true,
     description: '蒸制食材'
   },
   
@@ -69,6 +75,8 @@ export const appliances = {
     burnTime: 0,  // 不会烧焦
     cleanTime: 2000,
     price: 150,
+    // 电动搅拌器，需要电
+    requiresPower: true,
     description: '搅拌混合食材'
   },
   
@@ -84,6 +92,8 @@ export const appliances = {
     burnTime: 6000,
     cleanTime: 5000,
     price: 500,
+    // 电烤炉，需要电
+    requiresPower: true,
     description: '烤制食材'
   },
   
@@ -103,6 +113,8 @@ export const appliances = {
     // 清理时间（倒垃圾）
     cleanTime: 3000,
     price: 0,
+    // 不需要电
+    requiresPower: false,
     // 特殊类型标记
     type: 'trash',
     description: '丢弃厨余垃圾'

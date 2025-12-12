@@ -146,12 +146,6 @@ export function useCooking({ applianceStates, showToast, isShopOpen }) {
     // 开始处理
     const store = useGameStore()
     store.startProcessing(applianceId, processTime, outputDish)
-    
-    if (outputDish && outputDish.count > 1) {
-      showToast(`🔥 开始烹饪 ${outputDish.count} 份 ${outputDish.name}...`, 'success')
-    } else {
-      showToast(`🔥 开始处理...`, 'success')
-    }
   }
   
   // ========== 厨具管理 ==========
@@ -163,9 +157,7 @@ export function useCooking({ applianceStates, showToast, isShopOpen }) {
    */
   function handleClearAppliance(applianceId) {
     const store = useGameStore()
-    if (store.clearAppliance(applianceId)) {
-      showToast('🗑️ 已清空厨具', 'success')
-    }
+    store.clearAppliance(applianceId)
   }
   
   // ========== 返回接口 ==========

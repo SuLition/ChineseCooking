@@ -17,7 +17,8 @@ const props = defineProps({
   draggingPlate: { type: Boolean, default: false },
   allowedAppliances: { type: Array, default: () => [] },
   canProcess: { type: Boolean, default: false },
-  eventConfig: { type: Object, default: null }  // 专属事件配置
+  eventConfig: { type: Object, default: null },  // 专属事件配置
+  isPowerOutage: { type: Boolean, default: false }  // 停电状态
 })
 
 const emit = defineEmits(['dragover', 'dragleave', 'drop', 'start-cooking', 'clear', 'click', 'ingredient-drag-start', 'ingredient-drag-end', 'repair', 'special-action'])
@@ -37,6 +38,12 @@ const capacity = computed(() => applianceData.value?.capacity || 1)
 
 // 内容行数（根据容量和列数计算）
 const contentRows = computed(() => Math.ceil(capacity.value / gridCols.value))
+
+// 是否需要电力
+const requiresPower = computed(() => applianceData.value?.requiresPower === true)
+
+// 是否处于缺电状态（停电且需要电的厨具）
+const isNoPower = computed(() => props.isPowerOutage && requiresPower.value)
 
 // 是否会烧糊
 const canBurn = computed(() => (applianceData.value?.burnTime || 0) > 0)
@@ -296,7 +303,8 @@ function handleSlotDragEnd(e) {
       sizeClass, 
       applianceState.status, 
       getDragTargetClass(),
-      { locked: locked }
+      { locked: locked },
+      { 'no-power': isNoPower }
     ]"
     @dragover="handleDragOver"
     @dragleave="emit('dragleave', $event)"
@@ -746,9 +754,9 @@ function handleSlotDragEnd(e) {
 /* 堆叠数量角标 - 与食材卡片保持一致 */
 .stack-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 18px;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
   height: 16px;
   background: #4ade80;
   border-radius: 8px;
@@ -1232,5 +1240,82 @@ function handleSlotDragEnd(e) {
 .action-cost {
   font-size: 10px;
   opacity: 0.9;
+}
+
+/* 停电/缺电状态 */
+.appliance-item.no-power {
+  border-color: #64748b;
+  background: rgba(71, 85, 105, 0.3);
+  animation: power-outage 1s ease-in-out infinite;
+  position: relative;
+}
+
+.appliance-item.no-power::before {
+  content: '⚡';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  opacity: 0.7;
+  z-index: 10;
+  animation: power-icon-flicker 0.5s ease-in-out infinite;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
+}
+
+.appliance-item.no-power::after {
+  content: '缺电中';
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: bold;
+  color: #fbbf24;
+  z-index: 10;
+  animation: power-text-blink 0.8s ease-in-out infinite;
+}
+
+/* 停电时内容变暗 */
+.appliance-item.no-power .appliance-icon,
+.appliance-item.no-power .has-ingredients-layout,
+.appliance-item.no-power .appliance-name {
+  opacity: 0.4;
+  filter: grayscale(0.5);
+}
+
+@keyframes power-outage {
+  0%, 100% { 
+    box-shadow: 0 0 10px rgba(100, 116, 139, 0.3);
+    border-color: #64748b;
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(100, 116, 139, 0.5);
+    border-color: #94a3b8;
+  }
+}
+
+@keyframes power-icon-flicker {
+  0%, 100% { 
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  25% { 
+    opacity: 0.4;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  50% { 
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  75% { 
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.98);
+  }
+}
+
+@keyframes power-text-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 </style>

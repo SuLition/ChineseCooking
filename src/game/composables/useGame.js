@@ -67,34 +67,119 @@ export function useGame() {
   // 被虫子吃的食材ID（用于动画）
   const bugEatenIngredientId = ref(null)
   
+  // 停电状态
+  const isPowerOutage = ref(false)
+  
+  // 当前活动的小偷事件（用于显示弹窗）
+  const activeThiefEvent = ref(null)
+  
+  // 网红激增状态
+  const isInfluencerActive = ref(false)
+  
   /**
-   * 检查食材被虫子吃事件
-   * 随机选择一个有库存的食材进行检查
+   * 检查外部事件（小偷、虫子、停电）
    */
-  function checkIngredientBugEvent() {
+  function checkExternalEventsLoop() {
+    // 已经停电中，不再触发停电
+    // 已经有小偷事件弹窗，不再触发小偷
+    if (activeThiefEvent.value) return
+    
     // 获取所有有库存的食材
     const ingredientsWithStock = Object.entries(store.inventory)
       .filter(([id, count]) => count > 0 && rawIngredients[id])
       .map(([id, count]) => ({ id, count, ...rawIngredients[id] }))
     
-    if (ingredientsWithStock.length === 0) return
+    // 统一检查外部事件
+    const event = randomEventsSystem.checkExternalEvents({
+      ingredientsWithStock
+    })
     
-    // 随机选择一个食材
-    const randomIndex = Math.floor(Math.random() * ingredientsWithStock.length)
-    const ingredient = ingredientsWithStock[randomIndex]
+    if (!event) return
     
-    // 检查是否触发虫子事件
-    if (randomEventsSystem.checkIngredientBug(ingredient)) {
-      // 减少库存
-      store.inventory[ingredient.id]--
-      
-      // 设置被吃的食材ID（触发动画）
-      bugEatenIngredientId.value = ingredient.id
-      // 0.8秒后清除（动画时长）
-      setTimeout(() => {
-        bugEatenIngredientId.value = null
-      }, 800)
+    // 根据事件类型处理
+    switch (event.type) {
+      case 'thief':
+        // 小偷事件：设置活动事件，弹窗由App.vue处理
+        activeThiefEvent.value = event.data
+        break
+        
+      case 'bug':
+        // 虫子事件：减少库存，触发动画
+        store.inventory[event.data.id]--
+        bugEatenIngredientId.value = event.data.id
+        setTimeout(() => {
+          bugEatenIngredientId.value = null
+        }, 800)
+        break
+        
+      case 'power_outage':
+        // 停电事件
+        if (!isPowerOutage.value) {
+          isPowerOutage.value = true
+          setTimeout(() => {
+            isPowerOutage.value = false
+            showToast('💡 来电了！厨具恢复正常', 'success')
+          }, event.data.duration)
+        }
+        break
+        
+      case 'influencer':
+        // 网红事件：顾客激增
+        if (!isInfluencerActive.value) {
+          isInfluencerActive.value = true
+          setTimeout(() => {
+            isInfluencerActive.value = false
+            showToast('📱 网红离开了，顾客流量恢复正常', 'info')
+          }, event.data.duration)
+        }
+        break
     }
+  }
+  
+  /**
+   * 处理小偷事件选项
+   * @param {string} optionId - 选项ID
+   */
+  function handleThiefOption(optionId) {
+    if (!activeThiefEvent.value) return
+    
+    const eventConfig = activeThiefEvent.value
+    const option = eventConfig.options.find(o => o.id === optionId)
+    if (!option) return
+    
+    // 计算成功/失败
+    const roll = Math.random()
+    const isSuccess = roll < option.successRate
+    const result = isSuccess ? option.successResult : option.failResult
+    
+    if (result) {
+      // 显示消息
+      if (result.message) {
+        const type = result.money > 0 ? 'success' : result.money < 0 ? 'error' : 'info'
+        showToast(result.message, type)
+      }
+      
+      // 金币变化
+      if (result.money) {
+        store.state.money = Math.max(0, store.state.money + result.money)
+      }
+      
+      // 食材损失
+      if (result.ingredientLoss) {
+        const ingredientsWithStock = Object.entries(store.inventory)
+          .filter(([id, count]) => count > 0 && rawIngredients[id])
+        for (let i = 0; i < result.ingredientLoss && ingredientsWithStock.length > 0; i++) {
+          const randomIndex = Math.floor(Math.random() * ingredientsWithStock.length)
+          const [id] = ingredientsWithStock[randomIndex]
+          if (store.inventory[id] > 0) {
+            store.inventory[id]--
+          }
+        }
+      }
+    }
+    
+    // 清除活动事件
+    activeThiefEvent.value = null
   }
   
   // ========== 游戏控制 ==========
@@ -127,9 +212,6 @@ export function useGame() {
     }, 100)
     
     showToast('🏮 开店了！欢迎光临！', 'success')
-    
-    // 初始生成1个顾客
-    setTimeout(() => customerSystem.spawnCustomer(), 500)
     
     // 启动游戏循环
     startGameLoop()
@@ -208,6 +290,9 @@ export function useGame() {
       
       // 更新用餐进度
       updateEatingProgress()
+
+      // 检查外部事件（小偷、虫子、停电）
+      checkExternalEventsLoop()
       
       // 更新顾客耐心（开店和打烊期间都继续）
       const leftCustomers = customerSystem.updatePatience()
@@ -222,7 +307,22 @@ export function useGame() {
       }
     }, gameConfig.gameLoopInterval)
     
-    // 顾客生成循环（1000ms）
+    // 顾客生成循环（初始立即检测一次，然后每20秒检测）
+    // 开店时强制生成1-2个顾客
+    if (debugState.value.customerSpawnEnabled) {
+      const initialCount = Math.random() < 0.5 ? 1 : 2
+      for (let i = 0; i < initialCount; i++) {
+        const newCustomer = customerSystem.spawnCustomer()  // 强制生成
+        if (newCustomer) {
+          soundManager.playCustomerArrive()
+          if (i === 0) {
+            showToast(`${newCustomer.icon} ${newCustomer.name}来了，想要${newCustomer.dish}`, 'success')
+          }
+        }
+      }
+    }
+    
+    // 然后每20秒检测一次
     spawnTimer = setInterval(() => {
       if (!store.state.isOpen) return
       
@@ -235,15 +335,20 @@ export function useGame() {
       
       // 尝试生成顾客（可被调试开关控制）
       if (debugState.value.customerSpawnEnabled) {
-        const newCustomer = customerSystem.trySpawnCustomer()
-        if (newCustomer) {
-          soundManager.playCustomerArrive()
-          showToast(`${newCustomer.icon} ${newCustomer.name}来了，想要${newCustomer.dish}`, 'success')
+        // 网红激增时翻倍，正常1-3个
+        const baseCount = Math.floor(Math.random() * 3) + 1  // 1-3个
+        const spawnCount = isInfluencerActive.value ? baseCount * 2 : baseCount
+        
+        for (let i = 0; i < spawnCount; i++) {
+          const newCustomer = customerSystem.trySpawnCustomer()
+          if (newCustomer) {
+            soundManager.playCustomerArrive()
+            if (i === 0) {
+              showToast(`${newCustomer.icon} ${newCustomer.name}来了，想要${newCustomer.dish}`, 'success')
+            }
+          }
         }
       }
-      
-      // 检查食材被虫子吃事件
-      checkIngredientBugEvent()
     }, gameConfig.customerSpawnInterval)
   }
   
@@ -278,6 +383,11 @@ export function useGame() {
         const applianceData = appliances[applianceId]
         
         if (appliance.status === 'processing') {
+          // 停电时暂停烹饪
+          if (isPowerOutage.value) {
+            return
+          }
+          
           // 先检查专属事件
           if (randomEventsSystem.checkSpecialEvent(applianceId)) {
             return
@@ -293,7 +403,6 @@ export function useGame() {
           // 检查是否完成
           if (appliance.status === 'done') {
             soundManager.playSizzle()
-            showToast(`✨ ${applianceData?.name || applianceId}处理完成！`, 'success')
             
             // 打烊期间检查是否可以完成关店
             if (isClosing) {
@@ -317,7 +426,6 @@ export function useGame() {
             
             // 清理完成后检查是否可以关店
             if (appliance.status === 'idle') {
-              showToast(`✅ 垃圾桶清理完成！`, 'success')
               if (isClosing) {
                 checkCanFinishClose()
               }
@@ -337,7 +445,6 @@ export function useGame() {
           // 修理完成
           if (appliance.status === 'idle') {
             soundManager.playSuccess()
-            showToast(`✅ ${applianceData?.name || applianceId}修好了！`, 'success')
             if (isClosing) {
               checkCanFinishClose()
             }
@@ -410,8 +517,6 @@ export function useGame() {
     const result = store.startProcessing(applianceId, ingredientId, output.id, processTime)
     if (result) {
       soundManager.playClick()
-      const ingredient = rawIngredients[ingredientId]
-      showToast(`${ingredient?.icon || ''} 开始处理 ${ingredient?.name || ingredientId}`, 'success')
       return true
     }
     
@@ -429,16 +534,13 @@ export function useGame() {
       // 收取备菜
       const output = store.collectPrepared(applianceId)
       if (output) {
-        const prepared = preparedIngredients[output]
         soundManager.playSuccess()
-        showToast(`✅ 收取了 ${prepared?.icon || ''} ${prepared?.name || output}`, 'success')
       }
     } else if (appliance.status === 'burned') {
       // 开始清理
       const cleanTime = applianceData?.cleanTime || 2000
       if (store.cleanAppliance(applianceId, cleanTime)) {
         soundManager.playClick()
-        showToast(`🧹 正在清理${applianceData?.name || applianceId}...`, 'success')
       }
     }
   }
@@ -488,7 +590,6 @@ export function useGame() {
     customer.eatingStartTime = Date.now()
     
     soundManager.playSuccess()
-    showToast(`✅ ${customer.icon} 开始用餐`, 'success')
     
     return true
   }
@@ -621,6 +722,25 @@ export function useGame() {
   }
   
   /**
+   * 清空所有顾客
+   */
+  function debugClearAllCustomers() {
+    customerSystem.clearAllCustomers()
+    showToast('[调试] 已清空所有顾客', 'success')
+  }
+  
+  /**
+   * 删除指定索引的顾客
+   */
+  function debugRemoveCustomer(index) {
+    if (index >= 0 && index < store.customers.value.length) {
+      const customer = store.customers.value[index]
+      customerSystem.customerLeave(index, false)
+      showToast(`[调试] 已移除顾客: ${customer.icon} ${customer.name}`, 'success')
+    }
+  }
+  
+  /**
    * 获取所有菜品列表
    */
   const dishList = computed(() => getDishList())
@@ -706,11 +826,17 @@ export function useGame() {
     toggleCustomerSpawn,
     debugSpawnCustomer,
     debugSpawnDish,
+    debugClearAllCustomers,
+    debugRemoveCustomer,
     dishList,
     
     // 随机事件系统
     randomEventsSystem,
-    bugEatenIngredientId
+    bugEatenIngredientId,
+    isPowerOutage,
+    isInfluencerActive,
+    activeThiefEvent,
+    handleThiefOption
   }
 }
 

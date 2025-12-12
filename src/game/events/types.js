@@ -42,15 +42,9 @@ export const InternalEventTypes = {
 export const ExternalEventTypes = {
   // 有交互事件
   THIEF: 'thief',                       // 小偷
-  BEGGAR: 'beggar',                     // 乞丐
-  HEALTH_INSPECTOR: 'health_inspector', // 卫生检查员
-  FOOD_CRITIC: 'food_critic',           // 美食评论家
-  CELEBRITY: 'celebrity',               // 名人来访
-  SUPPLIER: 'supplier',                 // 供应商推销
   
   // 无交互事件
   INGREDIENT_BUG: 'ingredient_bug',     // 虫子吃食材
-  RAT_VISIT: 'rat_visit',               // 老鼠来访
   POWER_OUTAGE: 'power_outage'          // 短暂停电
 }
 

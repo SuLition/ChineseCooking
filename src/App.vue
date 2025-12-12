@@ -6,7 +6,7 @@
  * 使用现代化游戏架构
  */
 import { ref, computed, onUnmounted } from 'vue'
-import CustomerCard from './components/CustomerCard.vue'
+import CustomerList from './components/CustomerList.vue'
 import SoundPanel from './components/SoundPanel.vue'
 import UpgradePanel from './components/UpgradePanel.vue'
 import ShopPanel from './components/ShopPanel.vue'
@@ -83,11 +83,16 @@ const {
   toggleCustomerSpawn,
   debugSpawnCustomer,
   debugSpawnDish,
+  debugClearAllCustomers,
+  debugRemoveCustomer,
   dishList,
   
   // 随机事件系统
   randomEventsSystem,
-  bugEatenIngredientId
+  bugEatenIngredientId,
+  isPowerOutage,
+  activeThiefEvent,
+  handleThiefOption
 } = useGame()
 
 // 只显示用户拥有库存的食材
@@ -297,7 +302,6 @@ function handlePlateWash(plateIndex) {
     washStartTime: Date.now(),
     washDuration: 2000  // 2秒清洗时间
   }
-  showToast('🧼 开始清洗盘子...', 'success')
   
   // 启动清洗循环
   startWashingLoop()
@@ -331,7 +335,6 @@ function updatePlateWashing() {
           status: 'empty',
           dish: null
         }
-        showToast('✨ 盘子清洗完成！', 'success')
       }
     }
   })
@@ -480,12 +483,32 @@ function handleBuyIngredient(ingredientId, count, price) {
 // 切换顾客生成
 function handleToggleCustomerSpawn() {
   const enabled = toggleCustomerSpawn()
-  showToast(`[调试] 顾客生成: ${enabled ? '开启' : '关闭'}`, enabled ? 'success' : 'error')
+  showToast(`[调试] 顾客生成: ${enabled ? '自动' : '手动'}`, enabled ? 'success' : 'warning')
 }
 
 // 手动生成顾客
 function handleDebugSpawnCustomer() {
   debugSpawnCustomer()
+}
+
+// 手动生成指定数量的顾客
+function handleDebugSpawnCustomers(count) {
+  for (let i = 0; i < count; i++) {
+    debugSpawnCustomer()
+  }
+  if (count > 0) {
+    showToast(`[调试] 已生成 ${count} 个顾客`, 'success')
+  }
+}
+
+// 清空所有顾客
+function handleDebugClearCustomers() {
+  debugClearAllCustomers()
+}
+
+// 删除指定顾客
+function handleDebugRemoveCustomer(index) {
+  debugRemoveCustomer(index)
 }
 
 // 生成指定菜品
@@ -598,12 +621,16 @@ function getEventConfig(applianceId) {
       :visible="showDebugModal"
       :customer-spawn-enabled="debugState.customerSpawnEnabled"
       :customer-count="customers.length"
+      :customers="customers"
       :dish-list="dishList"
       :events-enabled="randomEventsSystem.eventsEnabled.value"
       :current-day="state.day"
       @close="showDebugModal = false"
       @toggle-spawn="handleToggleCustomerSpawn"
       @spawn-customer="handleDebugSpawnCustomer"
+      @spawn-customers="handleDebugSpawnCustomers"
+      @clear-customers="handleDebugClearCustomers"
+      @remove-customer="handleDebugRemoveCustomer"
       @spawn-dish="handleDebugSpawnDish"
       @toggle-events="handleToggleEvents"
       @update-probability="handleUpdateProbability"
@@ -617,27 +644,13 @@ function getEventConfig(applianceId) {
       <!-- 左侧主区域 -->
       <div class="left-area">
         <!-- 顾客列表 -->
-        <div class="customer-list">
-          <div class="customer-scroll">
-            <!-- 未开店提示 -->
-            <div v-if="!state.isOpen" class="empty-hint">
-              🏮 点击“开店”开始营业
-            </div>
-            <!-- 无顾客提示 -->
-            <div v-else-if="customers.length === 0" class="empty-hint">
-              ⏳ 等待顾客中...
-            </div>
-            <!-- 顾客卡片 -->
-            <CustomerCard
-              v-for="(customer, index) in customers"
-              :key="customer.id"
-              :customer="customer"
-              :selected="selectedCustomerIndex === index"
-              @select="selectCustomer(index)"
-              @serve-dish="handleServeDish"
-            />
-          </div>
-        </div>
+        <CustomerList
+          :customers="customers"
+          :selected-customer-index="selectedCustomerIndex"
+          :is-open="state.isOpen"
+          @select="selectCustomer"
+          @serve-dish="handleServeDish"
+        />
         
         <!-- 主工作区（新版做菜系统） -->
         <div class="kitchen-area">
@@ -751,6 +764,7 @@ function getEventConfig(applianceId) {
                       :dragging-plate="isDraggingPlate"
                       :allowed-appliances="currentDraggingAllowedAppliances"
                       :can-process="true"
+                      :is-power-outage="isPowerOutage"
                       draggable="true"
                       @dragstart="handleApplianceLayoutDragStart($event, app.id)"
                       @dragend="handleApplianceLayoutDragEnd"
@@ -798,8 +812,12 @@ function getEventConfig(applianceId) {
       @buy="handleBuyIngredient" 
     />
     
-    <!-- 特殊事件弹窗 -->
-    <SpecialEventModal :visible="showEventModal" :event="currentEvent" @option-click="handleEventOption" />
+    <!-- 小偷事件弹窗 -->
+    <SpecialEventModal 
+      :visible="!!activeThiefEvent" 
+      :event="activeThiefEvent" 
+      @option-click="handleThiefOption" 
+    />
     
     <!-- 连击显示 -->
     <ComboDisplay :combo="state.combo" :visible="showCombo" />
@@ -825,30 +843,6 @@ function getEventConfig(applianceId) {
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-
-/* 顾客列表 */
-.customer-list {
-  height: 160px;
-  background: linear-gradient(180deg, #1a0f0a 0%, #2d1f1a 100%);
-  border-bottom: 3px solid var(--light-wood);
-}
-
-.customer-scroll {
-  display: flex;
-  gap: 15px;
-  padding: 10px 15px;
-  overflow-x: auto;
-  height: 100%;
-  align-items: center;
-}
-
-.empty-hint {
-  width: 100%;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 16px;
-  padding: 20px;
 }
 
 /* 工作区 - 新版做菜系统 */

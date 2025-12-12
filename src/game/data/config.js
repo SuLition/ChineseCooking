@@ -11,7 +11,7 @@ export const timePeriods = {
     icon: '🌅',
     startHour: 7,
     endHour: 9,
-    spawnChance: 0.20
+    spawnChance: 0.10  // 原0.20
   },
   morning: {
     id: 'morning',
@@ -19,7 +19,7 @@ export const timePeriods = {
     icon: '⏰',
     startHour: 9,
     endHour: 11,
-    spawnChance: 0.08
+    spawnChance: 0.04  // 原0.08
   },
   lunch: {
     id: 'lunch',
@@ -27,7 +27,7 @@ export const timePeriods = {
     icon: '☀️',
     startHour: 11,
     endHour: 13,
-    spawnChance: 0.35
+    spawnChance: 0.175  // 原0.35
   },
   afternoon: {
     id: 'afternoon',
@@ -35,7 +35,7 @@ export const timePeriods = {
     icon: '🍵',
     startHour: 14,
     endHour: 16,
-    spawnChance: 0.10
+    spawnChance: 0.05  // 原0.10
   },
   preDinner: {
     id: 'preDinner',
@@ -43,7 +43,7 @@ export const timePeriods = {
     icon: '⏰',
     startHour: 16,
     endHour: 17,
-    spawnChance: 0.08
+    spawnChance: 0.04  // 原0.08
   },
   dinner: {
     id: 'dinner',
@@ -51,7 +51,7 @@ export const timePeriods = {
     icon: '🌆',
     startHour: 17,
     endHour: 20,
-    spawnChance: 0.35
+    spawnChance: 0.175  // 原0.35
   },
   lateNight: {
     id: 'lateNight',
@@ -59,7 +59,7 @@ export const timePeriods = {
     icon: '🌙',
     startHour: 21,
     endHour: 22,
-    spawnChance: 0.20
+    spawnChance: 0.10  // 原0.20
   }
 }
 
@@ -73,7 +73,7 @@ export const gameConfig = {
   timeSpeed: 2,
   
   // 顾客系统
-  maxCustomers: 1,  // 一次只能有1个顾客
+  maxCustomers: 6,  // 最多同时存在6个顾客
   basePatience: 80,
   patiencePerPrice: 25,
   patiencePerStep: 50,
@@ -81,7 +81,7 @@ export const gameConfig = {
   
   // 游戏循环间隔（毫秒）
   gameLoopInterval: 100,
-  customerSpawnInterval: 3000,  // 3秒检查一次是否生成顾客
+  customerSpawnInterval: 20000,  // 20秒检查一次是否生成顾客
   
   // 升级系统
   upgrades: {

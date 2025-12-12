@@ -640,7 +640,6 @@ export function useDragDrop(options) {
               sourceAppliance.status = 'idle'
             }
           }
-          showToast(`🗑️ 丢弃了 ${ingredientData.name}`, 'success')
           draggingFromAppliance.value = null
           return
         }
@@ -660,7 +659,6 @@ export function useDragDrop(options) {
               sourceAppliance.status = 'idle'
             }
           }
-          showToast(`✅ 将 ${ingredientData.name} 移到${appliances[applianceId]?.name || applianceId}`, 'success')
         } else {
           showToast(`❌ 厨具已满或堆叠上限`, 'error')
         }
@@ -693,8 +691,6 @@ export function useDragDrop(options) {
             }
           }
           store.resetAppliance(sourceApplianceId)
-          const countText = outputCount > 1 ? ` x${outputCount}` : ''
-          showToast(`🗑️ 丢弃了 ${dishData.name}${countText}`, 'success')
           draggingFromAppliance.value = null
           return
         }
@@ -710,8 +706,6 @@ export function useDragDrop(options) {
         })
         if (success) {
           store.resetAppliance(sourceApplianceId)
-          const countText = outputCount > 1 ? ` x${outputCount}` : ''
-          showToast(`✅ 将 ${dishData.name}${countText} 移到${appliances[applianceId]?.name || applianceId}继续加工`, 'success')
         } else {
           showToast(`❌ 厨具已满`, 'error')
         }
@@ -779,7 +773,6 @@ export function useDragDrop(options) {
     
     if (item) {
       addItemToPlate(plateIndex, item)
-      showToast(`✅ 将 ${item.name} 装盘`, 'success')
     }
     
     clearDragStates()
@@ -851,10 +844,8 @@ export function useDragDrop(options) {
         if (item.type === 'ingredient') {
           // 生食材退回库存
           inventory[item.id] = (inventory[item.id] || 0) + 1
-          showToast(`↩️ 将 ${item.name} 退回库存`, 'success')
         } else if (item.type === 'seasoning') {
           // 调料丢弃
-          showToast(`🗑️ ${item.name} 已丢弃`, 'error')
         } else {
           // 备菜/成品放入备菜区
           preparedItems.value.push({
@@ -863,7 +854,6 @@ export function useDragDrop(options) {
             icon: item.icon,
             image: item.image
           })
-          showToast(`✅ 将 ${item.name} 放入备菜区`, 'success')
         }
         
         // 处理堆叠
@@ -903,9 +893,8 @@ export function useDragDrop(options) {
         
         if (ingredientData.type === 'ingredient') {
           inventory[ingredientData.id] = (inventory[ingredientData.id] || 0) + 1
-          showToast(`↩️ 将 ${ingredientData.name} 退回库存`, 'success')
         } else if (ingredientData.type === 'seasoning') {
-          showToast(`🗑️ ${ingredientData.name} 已丢弃`, 'error')
+          // 调料丢弃
         } else {
           preparedItems.value.push({
             id: ingredientData.id,
@@ -913,7 +902,6 @@ export function useDragDrop(options) {
             icon: ingredientData.icon,
             image: ingredientData.image
           })
-          showToast(`✅ 将 ${ingredientData.name} 放入备菜区`, 'success')
         }
         
         if (currentCount > 1) {
@@ -951,8 +939,6 @@ export function useDragDrop(options) {
         }
         
         store.resetAppliance(sourceApplianceId)
-        const countText = outputCount > 1 ? ` x${outputCount}` : ''
-        showToast(`✅ 将 ${dishData.name}${countText} 放入备菜区`, 'success')
       }
       draggingFromAppliance.value = null
     }
@@ -1004,7 +990,6 @@ export function useDragDrop(options) {
         
         // 退回库存
         inventory[item.id] = (inventory[item.id] || 0) + 1
-        showToast(`↩️ 将 ${item.name} 退回库存`, 'success')
         
         // 处理堆叠
         if (currentCount > 1) {
@@ -1039,7 +1024,6 @@ export function useDragDrop(options) {
         
         if (ingredientData.type === 'ingredient') {
           inventory[ingredientData.id] = (inventory[ingredientData.id] || 0) + 1
-          showToast(`↩️ 将 ${ingredientData.name} 退回库存`, 'success')
           
           if (currentCount > 1) {
             sourceAppliance.ingredients[slotIndex] = {
@@ -1094,8 +1078,6 @@ export function useDragDrop(options) {
       count: outputCount,
       maxStack: outputCount
     })
-    
-    showToast(`✅ 继续加工 ${outputDish.name}`, 'success')
   }
   
   /**
@@ -1125,7 +1107,6 @@ export function useDragDrop(options) {
       }
       inventory[item.id]--
       store.addTrashToTrashBin(trashBinId, item)
-      showToast(`🗑️ 丢弃了 ${item.name}`, 'success')
       
     } else if (item.source === 'prepared_list') {
       // 从备菜区丢入
@@ -1133,13 +1114,11 @@ export function useDragDrop(options) {
       if (index !== -1) {
         preparedItems.value.splice(index, 1)
         store.addTrashToTrashBin(trashBinId, item)
-        showToast(`🗑️ 丢弃了 ${item.name}`, 'success')
       }
       
     } else if (item.source === 'seasoning_bar') {
       // 调料丢入（不消耗库存，只是记录垃圾）
       store.addTrashToTrashBin(trashBinId, item)
-      showToast(`🗑️ 丢弃了 ${item.name}`, 'success')
       
     } else if (item.source === 'appliance') {
       // 从厦具丢入
@@ -1159,8 +1138,6 @@ export function useDragDrop(options) {
           }
         }
         store.resetAppliance(sourceApplianceId)
-        const countText = outputCount > 1 ? ` x${outputCount}` : ''
-        showToast(`🗑️ 丢弃了 ${item.name}${countText}`, 'success')
         return
       }
       
@@ -1184,8 +1161,6 @@ export function useDragDrop(options) {
             sourceAppliance.status = 'idle'
           }
         }
-        
-        showToast(`🗑️ 丢弃了 ${item.name}`, 'success')
       }
     }
   }

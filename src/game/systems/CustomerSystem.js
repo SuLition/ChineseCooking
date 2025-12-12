@@ -104,21 +104,31 @@ export class CustomerSystem {
   }
   
   /**
-   * 智能生成顾客（基于时间段概率）
+   * 智能生成顾客（基于时间段概率和当前顾客数量）
    * @returns {Object|null} 生成的顾客对象
    */
   trySpawnCustomer() {
     if (!this.store.state.isOpen) return null
     if (this.store.customers.value.length >= gameConfig.maxCustomers) return null
     
-    const spawnChance = this.timeSystem.getSpawnChance()
+    // 基础概率（时间段）
+    const baseChance = this.timeSystem.getSpawnChance()
     
-    // 如果正在烹饪，降低生成概率
-    if (this.store.cookingState.isActive) {
-      if (Math.random() >= spawnChance * 0.3) return null
-    } else {
-      if (Math.random() >= spawnChance) return null
-    }
+    // 顾客数量修正：顾客越少概率越高，顾客越多概率越低
+    // 0个顾客 -> 6倍
+    // 1个顾客 -> 5倍
+    // 2个顾客 -> 4倍
+    // 3个顾客 -> 3倍
+    // 4个顾客 -> 2倍
+    // 5个顾客 -> 1倍
+    // 6个顾客 -> 0倍
+    const currentCount = this.store.customers.value.length
+    const customerMultiplier = Math.max(0, 6 - currentCount)
+    
+    // 最终概率
+    const finalChance = baseChance * customerMultiplier
+    
+    if (Math.random() >= finalChance) return null
     
     return this.spawnCustomer()
   }

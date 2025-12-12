@@ -55,152 +55,6 @@ export const externalEvents = {
     ]
   },
   
-  // 乞丐
-  beggar: {
-    id: 'beggar',
-    category: 'interactive',
-    name: '乞丐',
-    icon: '🧎',
-    probability: 0,
-    cooldown: 45000,
-    duration: 15000,
-    description: '一个衣衫褴褛的人在门口乞讨...',
-    options: [
-      {
-        id: 'give_food',
-        text: '🍚 给他一份饭',
-        description: '施舍食物',
-        successRate: 1,
-        successResult: {
-          message: '🙏 乞丐感激地离开了，好人有好报！',
-          reputation: 5,     // 增加声望
-          luck: 0.1,         // 临时增加幸运值
-        }
-      },
-      {
-        id: 'give_money',
-        text: '💰 给他一些钱',
-        description: '施舍金币',
-        cost: 10,
-        successRate: 1,
-        successResult: {
-          message: '🙏 乞丐感谢了你的慷慨！',
-          reputation: 3,
-        }
-      },
-      {
-        id: 'refuse',
-        text: '🚫 婉言拒绝',
-        description: '不给任何东西',
-        successRate: 1,
-        successResult: {
-          message: '😔 乞丐失望地离开了...',
-          reputation: -2,
-        }
-      }
-    ]
-  },
-  
-  // 卫生检查员
-  health_inspector: {
-    id: 'health_inspector',
-    category: 'interactive',
-    name: '卫生检查员',
-    icon: '👨‍⚕️',
-    probability: 0,
-    cooldown: 120000,
-    duration: 20000,
-    description: '卫生检查员来检查你的餐厅了！',
-    // 检查项目（根据当前状态计算分数）
-    checkItems: ['trash', 'cleanliness', 'ingredients'],
-    options: [
-      {
-        id: 'accept',
-        text: '✅ 接受检查',
-        description: '配合检查',
-        successRate: 1,  // 结果取决于检查分数
-        // 结果由检查分数决定
-      },
-      {
-        id: 'bribe',
-        text: '💰 塞点好处',
-        description: '尝试贿赂（花费50金币）',
-        cost: 50,
-        successRate: 0.6,
-        successResult: {
-          message: '😏 检查员收下了"茶水费"，满意地离开了',
-        },
-        failResult: {
-          message: '😠 检查员拒绝了贿赂，加倍罚款！',
-          money: -100,
-        }
-      }
-    ]
-  },
-  
-  // 美食评论家
-  food_critic: {
-    id: 'food_critic',
-    category: 'interactive',
-    name: '美食评论家',
-    icon: '👨‍🍳',
-    probability: 0,
-    cooldown: 180000,
-    duration: 30000,
-    description: '一位著名的美食评论家来到了你的店里！',
-    options: [
-      {
-        id: 'serve_best',
-        text: '🌟 拿出看家本领',
-        description: '全力以赴做最好的菜',
-        successRate: 1,  // 结果取决于上菜质量
-        // 需要在时限内上一道菜，根据菜品评分
-      }
-    ]
-  },
-  
-  // 名人来访
-  celebrity: {
-    id: 'celebrity',
-    category: 'interactive',
-    name: '名人',
-    icon: '⭐',
-    probability: 0,
-    cooldown: 300000,
-    duration: 25000,
-    description: '一位名人慕名来到你的餐厅！',
-    options: [
-      {
-        id: 'welcome',
-        text: '🎉 热情招待',
-        description: '给予VIP待遇',
-        successRate: 1,
-        successResult: {
-          message: '📸 名人对你的餐厅赞不绝口，吸引了更多顾客！',
-          customerBonus: 3,  // 额外生成3个顾客
-          reputation: 10,
-        }
-      }
-    ]
-  },
-  
-  // 供应商推销
-  supplier: {
-    id: 'supplier',
-    category: 'interactive',
-    name: '供应商',
-    icon: '🚚',
-    probability: 0,
-    cooldown: 90000,
-    duration: 20000,
-    description: '一位供应商带来了特价商品！',
-    // 随机生成特价商品
-    generateOffers: true,
-    options: [
-      // 动态生成购买选项
-    ]
-  },
-  
   // ========== 无交互事件 ==========
   
   // 虫子吃食材
@@ -220,23 +74,6 @@ export const externalEvents = {
     }
   },
   
-  // 老鼠来访
-  rat_visit: {
-    id: 'rat_visit',
-    category: 'passive',
-    name: '老鼠来访',
-    icon: '🐀',
-    probability: 0,
-    cooldown: 30000,
-    description: '一只老鼠溜进了厨房',
-    effect: {
-      ingredientLoss: 3,
-      reputationLoss: 2
-    },
-    messages: {
-      trigger: '🐀 一只老鼠溜进了厨房，吃掉了一些食材！'
-    }
-  },
   
   // 短暂停电
   power_outage: {
@@ -248,10 +85,28 @@ export const externalEvents = {
     cooldown: 60000,
     description: '突然停电了',
     effect: {
-      pauseCooking: 3000  // 暂停烹饪3秒
+      pauseCooking: 10000  // 暂停烹饪10秒
     },
     messages: {
       trigger: '⚡ 突然停电了！厨具暂时无法使用！'
+    }
+  },
+  
+  // 网红来了
+  influencer: {
+    id: 'influencer',
+    category: 'passive',
+    name: '网红来了',
+    icon: '📱',
+    probability: 0,
+    cooldown: 300000,  // 5分钟冷却
+    description: '一位网红正在直播你的餐厅！',
+    effect: {
+      customerBoost: 300000  // 顾客激增持续300秒
+    },
+    messages: {
+      trigger: '📱 网红来了！顾客量激增中...',
+      end: '📱 网红离开了，顾客流量恢复正常'
     }
   }
 }
@@ -292,11 +147,6 @@ export function getExternalEventProbability(eventId, day, reputation = 0) {
   // 天数加成（每天增加5%）
   const dayMultiplier = 1 + (day - 1) * 0.05
   probability *= Math.min(dayMultiplier, 2)  // 最多2倍
-  
-  // 声望影响（声望高更容易遇到好事件）
-  if (eventId === 'celebrity' || eventId === 'food_critic') {
-    probability *= (1 + reputation * 0.01)
-  }
   
   return probability
 }
