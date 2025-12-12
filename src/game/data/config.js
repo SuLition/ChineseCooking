@@ -81,7 +81,7 @@ export const gameConfig = {
   
   // 游戏循环间隔（毫秒）
   gameLoopInterval: 100,
-  customerSpawnInterval: 20000,  // 20秒检查一次是否生成顾客
+  customerSpawnInterval: 30000,  // 20秒检查一次是否生成顾客
   
   // 升级系统
   upgrades: {

@@ -90,34 +90,65 @@ export function createInventoryState(userData) {
     
     // ========== 调料操作 ==========
     
-    // 获取调料库存
+    // 获取调料库存（当前瓶剩余量）
     getSeasoningAmount(seasoningId) {
-      return userData.seasonings[seasoningId] || 0
+      const data = userData.seasonings[seasoningId]
+      if (typeof data === 'number') return data
+      if (typeof data === 'object' && data !== null) return data.currentAmount || 0
+      return 0
     },
     
     // 消耗调料
-    consumeSeasoning(seasoningId, amount = 10) {
-      if ((userData.seasonings[seasoningId] || 0) < amount) return false
-      userData.seasonings[seasoningId] -= amount
-      return true
+    consumeSeasoning(seasoningId, amount = 1) {
+      const data = userData.seasonings[seasoningId]
+      if (!data) return false
+      
+      // 处理对象格式 { bottles, currentAmount }
+      if (typeof data === 'object') {
+        if ((data.currentAmount || 0) < amount) return false
+        data.currentAmount -= amount
+        return true
+      }
+      
+      // 处理数字格式
+      if (typeof data === 'number') {
+        if (data < amount) return false
+        userData.seasonings[seasoningId] -= amount
+        return true
+      }
+      
+      return false
     },
     
     // 调料撒事件：减少调料容量
     spillSeasoning(seasoningId, spillAmount) {
-      if (!userData.seasonings[seasoningId]) return
-      userData.seasonings[seasoningId] = Math.max(0, userData.seasonings[seasoningId] - spillAmount)
+      const data = userData.seasonings[seasoningId]
+      if (!data) return
+      
+      if (typeof data === 'object') {
+        data.currentAmount = Math.max(0, (data.currentAmount || 0) - spillAmount)
+      } else if (typeof data === 'number') {
+        userData.seasonings[seasoningId] = Math.max(0, data - spillAmount)
+      }
     },
     
-    // 购买调料
+    // 购买调料（增加瓶数）
     buySeasoning(seasoningId, amount, price, state) {
       const totalCost = price
       if (state.money < totalCost) return false
       
       state.money -= totalCost
-      if (userData.seasonings[seasoningId] !== undefined) {
-        userData.seasonings[seasoningId] += amount
+      const data = userData.seasonings[seasoningId]
+      
+      if (typeof data === 'object') {
+        // 对象格式：增加瓶数并补充 currentAmount
+        data.bottles = (data.bottles || 0) + amount
+        data.currentAmount = (data.currentAmount || 0) + amount * 100 // 每瓶100
+      } else if (typeof data === 'number') {
+        userData.seasonings[seasoningId] += amount * 100
       } else {
-        userData.seasonings[seasoningId] = amount
+        // 初始化新调料
+        userData.seasonings[seasoningId] = { bottles: amount, currentAmount: amount * 100 }
       }
       return true
     }

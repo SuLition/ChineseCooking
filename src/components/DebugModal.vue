@@ -5,7 +5,7 @@
  * 
  * 提供完整的调试功能：
  * - 顾客控制
- * - 菜品生成
+ * - 自动做菜
  * - 随机事件概率设置
  * - 难度倍率调整
  * - 手动触发事件
@@ -17,9 +17,9 @@ import { externalEvents } from '../game/events/externalEvents'
 const props = defineProps({
   visible: { type: Boolean, default: false },
   customerSpawnEnabled: { type: Boolean, default: true },
+  autoCookEnabled: { type: Boolean, default: false },
   customerCount: { type: Number, default: 0 },
   customers: { type: Array, default: () => [] },
-  dishList: { type: Array, default: () => [] },
   eventsEnabled: { type: Boolean, default: true },
   currentDay: { type: Number, default: 1 }
 })
@@ -28,10 +28,9 @@ const emit = defineEmits([
   'close',
   'toggle-spawn',
   'spawn-customer',
-  'spawn-customers',
   'clear-customers',
   'remove-customer',
-  'spawn-dish',
+  'toggle-auto-cook',
   'toggle-events',
   'update-probability',
   'update-difficulty',
@@ -41,12 +40,6 @@ const emit = defineEmits([
 
 // 当前选中的标签页
 const activeTab = ref('general')
-
-// 菜品选择
-const selectedDish = ref('')
-
-// 手动生成顾客数量
-const manualSpawnCount = ref(1)
 
 // 本地事件概率副本（用于编辑）
 const localInternalProbabilities = reactive({})
@@ -114,20 +107,6 @@ const externalEventList = computed(() => {
     probability: localExternalProbabilities[id]
   }))
 })
-
-// 生成菜品
-function handleSpawnDish() {
-  if (selectedDish.value) {
-    emit('spawn-dish', selectedDish.value)
-  }
-}
-
-// 手动生成指定数量的顾客
-function handleSpawnCustomers() {
-  if (manualSpawnCount.value > 0) {
-    emit('spawn-customers', manualSpawnCount.value)
-  }
-}
 
 // 保存内部事件概率
 function saveInternalProbability(eventId) {
@@ -231,17 +210,6 @@ function handleClose() {
                 </button>
               </div>
             </div>
-            <div class="control-row">
-              <span>手动生成</span>
-              <div class="spawn-control">
-                <select v-model.number="manualSpawnCount" class="spawn-select">
-                  <option v-for="n in 7" :key="n-1" :value="n-1">{{ n-1 }} 个</option>
-                </select>
-                <button class="action-btn" @click="handleSpawnCustomers">
-                  生成
-                </button>
-              </div>
-            </div>
             <!-- 顾客列表 -->
             <div v-if="customers.length > 0" class="customer-list-debug">
               <div class="customer-list-header">顾客列表 (点击删除)</div>
@@ -261,16 +229,18 @@ function handleClose() {
           </div>
           
           <div class="section">
-            <h3 class="section-title">🍽️ 菜品生成</h3>
-            <div class="dish-row">
-              <select v-model="selectedDish" class="dish-select">
-                <option value="">选择菜品...</option>
-                <option v-for="dish in dishList" :key="dish.id" :value="dish.id">
-                  {{ dish.icon }} {{ dish.name }}
-                </option>
-              </select>
-              <button class="action-btn" @click="handleSpawnDish">生成</button>
+            <h3 class="section-title">🍽️ 自动做菜</h3>
+            <div class="control-row">
+              <span>自动模式</span>
+              <button 
+                class="toggle-btn" 
+                :class="{ active: autoCookEnabled }"
+                @click="emit('toggle-auto-cook')"
+              >
+                {{ autoCookEnabled ? '开启' : '关闭' }}
+              </button>
             </div>
+            <div class="hint-text">开启后自动识别顾客需求，自动烹饪上菜</div>
           </div>
           
           <div class="section">
@@ -590,6 +560,16 @@ function handleClose() {
 
 .action-btn.warning:hover {
   background: rgba(245, 158, 11, 0.4);
+}
+
+.action-btn.success {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.action-btn.success:hover:not(:disabled) {
+  background: rgba(34, 197, 94, 0.4);
 }
 
 .dish-row {
@@ -925,5 +905,11 @@ function handleClose() {
 
 .multiplier-input:focus {
   border-color: #a5b4fc;
+}
+
+.hint-text {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 8px;
 }
 </style>

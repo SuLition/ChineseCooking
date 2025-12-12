@@ -15,20 +15,20 @@ export function createUserDataState() {
   const userData = reactive({
     // 食材库存（生食材）
     ingredients: {
-      vegetables: 5,
-      tomato: 5,
-      pumpkin: 5,
-      onion: 5,
-      egg: 5,
-      chicken_leg: 5,
-      garlic: 5,
-      herbs: 5
+      vegetables: 100,
+      tomato: 100,
+      pumpkin: 100,
+      onion: 100,
+      egg: 100,
+      chicken_leg: 100,
+      garlic: 100,
+      herbs: 100
     },
     
     // 调料库存 { bottles: 瓶数, currentAmount: 当前瓶剩余量 }
     seasonings: {
-      salt: { bottles: 3, currentAmount: 100 },
-      sugar: { bottles: 3, currentAmount: 100 }
+      salt: { bottles: 100, currentAmount: 100 },
+      sugar: { bottles: 100, currentAmount: 100 }
     },
     
     // 拥有的厨具（ID数组）

@@ -27,11 +27,12 @@ import SeasoningsSection from './components/SeasoningsSection.vue'
 // 导入游戏核心
 import { useGame, useDragDrop, useCooking, useApplianceGrid } from './game'
 import { usePlates } from './game/composables/usePlates'
+import { useAutoCook } from './game/composables/useAutoCook'
 import { useGameStore } from './game/stores/gameStore'
 import { rawIngredients, preparedIngredients, seasonings } from './game/data/ingredients'
 import { appliances } from './game/data/appliances'
 import { dishes } from './game/data/dishes'
-import { GRID, APPLIANCE_STATUS } from './game/constants'
+import { GRID, APPLIANCE_STATUS, PLATE_STATUS } from './game/constants'
 
 // ========== 初始化游戏 ==========
 const {
@@ -82,10 +83,8 @@ const {
   debugState,
   toggleCustomerSpawn,
   debugSpawnCustomer,
-  debugSpawnDish,
   debugClearAllCustomers,
   debugRemoveCustomer,
-  dishList,
   // 事件调试
   toggleEvents,
   updateProbability,
@@ -238,6 +237,24 @@ const {
   isShopOpen: () => state.isOpen
 })
 
+// ========== 初始化自动做菜系统 ==========
+const {
+  enabled: autoCookEnabled,
+  toggle: toggleAutoCook
+} = useAutoCook({
+  customers,
+  inventory,
+  userData,
+  applianceStates,
+  preparedItems,
+  plates,
+  showToast,
+  serveCustomer,
+  handlePlateWash,
+  addDishToPlate,
+  handleStartCooking
+})
+
 // ========== 提供给子组件的方法 ==========
 provide('clickAppliance', clickAppliance)
 provide('repairAppliance', (applianceId) => randomEventsSystem.repairAppliance(applianceId))
@@ -365,18 +382,17 @@ function getEventConfig(applianceId) {
     <DebugModal
       :visible="showDebugModal"
       :customer-spawn-enabled="debugState.customerSpawnEnabled"
+      :auto-cook-enabled="autoCookEnabled"
       :customer-count="customers.length"
       :customers="customers"
-      :dish-list="dishList"
       :events-enabled="randomEventsSystem.eventsEnabled.value"
       :current-day="state.day"
       @close="showDebugModal = false"
       @toggle-spawn="handleToggleCustomerSpawn"
       @spawn-customer="debugSpawnCustomer"
-      @spawn-customers="(count) => { for (let i = 0; i < count; i++) debugSpawnCustomer(); showToast(`[调试] 已生成 ${count} 个顾客`, 'success') }"
       @clear-customers="debugClearAllCustomers"
       @remove-customer="debugRemoveCustomer"
-      @spawn-dish="(id) => id ? debugSpawnDish(id) : showToast('[调试] 请先选择菜品', 'error')"
+      @toggle-auto-cook="toggleAutoCook"
       @toggle-events="toggleEvents"
       @update-probability="updateProbability"
       @update-difficulty="updateDifficulty"

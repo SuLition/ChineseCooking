@@ -78,25 +78,6 @@ export function useDebug(options) {
   }
 
   /**
-   * 生成指定菜品的顾客
-   * @param {string} dishId - 菜品ID
-   * @returns {Object|null} 生成的顾客
-   */
-  function debugSpawnDish(dishId) {
-    if (!store.state.isOpen) {
-      showToast?.('请先开店！', 'error')
-      return null
-    }
-    
-    const customer = customerSystem?.spawnCustomerWithDish(dishId)
-    if (customer) {
-      soundManager?.playCustomerArrive?.()
-      showToast?.(`[调试] 生成订单: ${customer.dishIcon} ${customer.dish}`, 'success')
-    }
-    return customer
-  }
-
-  /**
    * 清空所有顾客
    */
   function debugClearAllCustomers() {
@@ -262,7 +243,6 @@ export function useDebug(options) {
 
     // 顾客调试
     debugSpawnCustomer,
-    debugSpawnDish,
     debugClearAllCustomers,
     debugRemoveCustomer,
 
