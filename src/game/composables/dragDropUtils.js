@@ -7,6 +7,7 @@
 
 import { rawIngredients, preparedIngredients, seasonings } from '../data/ingredients'
 import { appliances } from '../data/appliances'
+import { APPLIANCE_STATUS } from '../constants'
 
 // ========== 拖放数据格式 ==========
 
@@ -117,7 +118,7 @@ export function canDrop(item, targetType, targetOptions = {}) {
       // 垃圾桶特殊处理：接受所有类型的物品
       if (applianceData?.type === 'trash') {
         // 只有空闲或有垃圾状态才能添加
-        if (applianceStatus !== 'idle' && applianceStatus !== 'hasIngredients') {
+        if (applianceStatus !== APPLIANCE_STATUS.IDLE && applianceStatus !== APPLIANCE_STATUS.HAS_INGREDIENTS) {
           return { canDrop: false, reason: '垃圾桶正在清理' }
         }
         return { canDrop: true, reason: '' }
@@ -129,7 +130,7 @@ export function canDrop(item, targetType, targetOptions = {}) {
       }
       
       // 厨具必须是空闲、有食材或完成状态
-      if (applianceStatus !== 'idle' && applianceStatus !== 'hasIngredients' && applianceStatus !== 'done') {
+      if (applianceStatus !== APPLIANCE_STATUS.IDLE && applianceStatus !== APPLIANCE_STATUS.HAS_INGREDIENTS && applianceStatus !== APPLIANCE_STATUS.DONE) {
         return { canDrop: false, reason: '厨具正忙' }
       }
       

@@ -8,7 +8,7 @@
 import { reactive, ref } from 'vue'
 import { appliances } from '../../data/appliances'
 import { createApplianceState as createState } from '../../tools/stateFactories'
-import { GRID } from '../../constants'
+import { GRID, APPLIANCE_STATUS } from '../../constants'
 
 // 从常量模块获取网格配置
 const { COLS: GRID_COLS, ROWS: GRID_ROWS } = GRID
@@ -92,7 +92,7 @@ export function createApplianceStateModule(userData) {
     addIngredientToAppliance(applianceId, ingredientData) {
       const appliance = applianceStates[applianceId]
       if (!appliance) return false
-      if (appliance.status !== 'idle' && appliance.status !== 'hasIngredients') return false
+      if (appliance.status !== APPLIANCE_STATUS.IDLE && appliance.status !== APPLIANCE_STATUS.HAS_INGREDIENTS) return false
       
       const maxStack = ingredientData.maxStack || 1
       const existingIndex = appliance.ingredients.findIndex(ing => ing.id === ingredientData.id)
@@ -119,17 +119,17 @@ export function createApplianceStateModule(userData) {
         ...ingredientData,
         count: ingredientData.count || 1
       })
-      appliance.status = 'hasIngredients'
+      appliance.status = APPLIANCE_STATUS.HAS_INGREDIENTS
       return true
     },
     
     // 开始处理
     startProcessing(applianceId, processTime, matchedDish) {
       const appliance = applianceStates[applianceId]
-      if (!appliance || appliance.status !== 'hasIngredients') return false
+      if (!appliance || appliance.status !== APPLIANCE_STATUS.HAS_INGREDIENTS) return false
       if (appliance.ingredients.length === 0) return false
       
-      appliance.status = 'processing'
+      appliance.status = APPLIANCE_STATUS.PROCESSING
       appliance.outputDish = matchedDish
       appliance.progress = 0
       appliance.startTime = Date.now()
@@ -143,12 +143,12 @@ export function createApplianceStateModule(userData) {
       const appliance = applianceStates[applianceId]
       if (!appliance) return
       
-      if (appliance.status === 'processing') {
+      if (appliance.status === APPLIANCE_STATUS.PROCESSING) {
         const elapsed = Date.now() - appliance.startTime
         appliance.progress = Math.min(100, (elapsed / appliance.processTime) * 100)
         
         if (appliance.progress >= 100) {
-          appliance.status = 'done'
+          appliance.status = APPLIANCE_STATUS.DONE
           appliance.burnTimer = Date.now()
         }
       }
@@ -157,11 +157,11 @@ export function createApplianceStateModule(userData) {
     // 检查烧焦
     checkBurn(applianceId, burnTime) {
       const appliance = applianceStates[applianceId]
-      if (!appliance || appliance.status !== 'done' || burnTime <= 0) return false
+      if (!appliance || appliance.status !== APPLIANCE_STATUS.DONE || burnTime <= 0) return false
       
       const elapsed = Date.now() - appliance.burnTimer
       if (elapsed >= burnTime) {
-        appliance.status = 'burned'
+        appliance.status = APPLIANCE_STATUS.BURNED
         return true
       }
       return false
@@ -170,7 +170,7 @@ export function createApplianceStateModule(userData) {
     // 装盘
     serveDish(applianceId) {
       const appliance = applianceStates[applianceId]
-      if (!appliance || appliance.status !== 'done') return null
+      if (!appliance || appliance.status !== APPLIANCE_STATUS.DONE) return null
       
       const dish = appliance.outputDish
       actions.resetAppliance(applianceId)
@@ -182,10 +182,10 @@ export function createApplianceStateModule(userData) {
     clearAppliance(applianceId) {
       const appliance = applianceStates[applianceId]
       if (!appliance) return false
-      if (appliance.status !== 'hasIngredients') return false
+      if (appliance.status !== APPLIANCE_STATUS.HAS_INGREDIENTS) return false
       
       appliance.ingredients = []
-      appliance.status = 'idle'
+      appliance.status = APPLIANCE_STATUS.IDLE
       return true
     },
     
@@ -195,7 +195,7 @@ export function createApplianceStateModule(userData) {
       const applianceData = appliances[applianceId]
       if (!appliance || applianceData?.type !== 'trash') return false
       
-      if (appliance.status !== 'idle' && appliance.status !== 'hasIngredients') return false
+      if (appliance.status !== APPLIANCE_STATUS.IDLE && appliance.status !== APPLIANCE_STATUS.HAS_INGREDIENTS) return false
       
       const currentCount = appliance.trashCount || 0
       const capacity = applianceData.capacity || 20
@@ -203,7 +203,7 @@ export function createApplianceStateModule(userData) {
       if (currentCount >= capacity) return false
       
       appliance.trashCount = currentCount + 1
-      appliance.status = 'hasIngredients'
+      appliance.status = APPLIANCE_STATUS.HAS_INGREDIENTS
       
       return true
     },
@@ -213,10 +213,10 @@ export function createApplianceStateModule(userData) {
       const appliance = applianceStates[applianceId]
       const applianceData = appliances[applianceId]
       if (!appliance || applianceData?.type !== 'trash') return false
-      if (appliance.status !== 'hasIngredients') return false
+      if (appliance.status !== APPLIANCE_STATUS.HAS_INGREDIENTS) return false
       if (!appliance.trashCount || appliance.trashCount <= 0) return false
       
-      appliance.status = 'cleaning'
+      appliance.status = APPLIANCE_STATUS.CLEANING
       appliance.progress = 0
       appliance.startTime = Date.now()
       appliance.processTime = applianceData.cleanTime || 3000
@@ -229,13 +229,13 @@ export function createApplianceStateModule(userData) {
       const appliance = applianceStates[applianceId]
       const applianceData = appliances[applianceId]
       if (!appliance || applianceData?.type !== 'trash') return
-      if (appliance.status !== 'cleaning') return
+      if (appliance.status !== APPLIANCE_STATUS.CLEANING) return
       
       const elapsed = Date.now() - appliance.startTime
       appliance.progress = Math.min(100, (elapsed / appliance.processTime) * 100)
       
       if (appliance.progress >= 100) {
-        appliance.status = 'idle'
+        appliance.status = APPLIANCE_STATUS.IDLE
         appliance.trashCount = 0
         appliance.progress = 0
         appliance.startTime = 0
@@ -258,13 +258,13 @@ export function createApplianceStateModule(userData) {
     removeIngredientFromAppliance(applianceId, index) {
       const appliance = applianceStates[applianceId]
       if (!appliance) return null
-      if (appliance.status !== 'hasIngredients') return null
+      if (appliance.status !== APPLIANCE_STATUS.HAS_INGREDIENTS) return null
       if (index < 0 || index >= appliance.ingredients.length) return null
       
       const removed = appliance.ingredients.splice(index, 1)[0]
       
       if (appliance.ingredients.length === 0) {
-        appliance.status = 'idle'
+        appliance.status = APPLIANCE_STATUS.IDLE
       }
       
       return removed
@@ -275,7 +275,7 @@ export function createApplianceStateModule(userData) {
       const appliance = applianceStates[applianceId]
       if (!appliance) return
       
-      appliance.status = 'idle'
+      appliance.status = APPLIANCE_STATUS.IDLE
       appliance.ingredients = []
       appliance.outputDish = null
       appliance.progress = 0
@@ -288,9 +288,9 @@ export function createApplianceStateModule(userData) {
     // 清理烧焦的厨具
     cleanAppliance(applianceId, cleanTime) {
       const appliance = applianceStates[applianceId]
-      if (!appliance || appliance.status !== 'burned') return false
+      if (!appliance || appliance.status !== APPLIANCE_STATUS.BURNED) return false
       
-      appliance.status = 'cleaning'
+      appliance.status = APPLIANCE_STATUS.CLEANING
       appliance.progress = 0
       appliance.startTime = Date.now()
       appliance.processTime = cleanTime
@@ -301,7 +301,7 @@ export function createApplianceStateModule(userData) {
     // 更新清理进度
     updateCleaningProgress(applianceId) {
       const appliance = applianceStates[applianceId]
-      if (!appliance || appliance.status !== 'cleaning') return
+      if (!appliance || appliance.status !== APPLIANCE_STATUS.CLEANING) return
       
       const elapsed = Date.now() - appliance.startTime
       appliance.progress = Math.min(100, (elapsed / appliance.processTime) * 100)
@@ -314,7 +314,7 @@ export function createApplianceStateModule(userData) {
     // 获取烧焦倒计时剩余比例
     getBurnProgress(applianceId, burnTime) {
       const appliance = applianceStates[applianceId]
-      if (!appliance || appliance.status !== 'done' || burnTime <= 0) return 0
+      if (!appliance || appliance.status !== APPLIANCE_STATUS.DONE || burnTime <= 0) return 0
       
       const elapsed = Date.now() - appliance.burnTimer
       return Math.min(100, (elapsed / burnTime) * 100)
@@ -325,10 +325,10 @@ export function createApplianceStateModule(userData) {
       const appliance = applianceStates[applianceId]
       if (!appliance) return false
       
-      const canBreakStatuses = ['idle', 'hasIngredients', 'processing', 'done']
+      const canBreakStatuses = [APPLIANCE_STATUS.IDLE, APPLIANCE_STATUS.HAS_INGREDIENTS, APPLIANCE_STATUS.PROCESSING, APPLIANCE_STATUS.DONE]
       if (!canBreakStatuses.includes(appliance.status)) return false
       
-      appliance.status = 'broken'
+      appliance.status = APPLIANCE_STATUS.BROKEN
       appliance.ingredients = []
       appliance.outputDish = null
       appliance.progress = 0
@@ -343,7 +343,7 @@ export function createApplianceStateModule(userData) {
     // 开始修理厨具
     startRepairingAppliance(applianceId, repairTime, repairCost, state) {
       const appliance = applianceStates[applianceId]
-      if (!appliance || appliance.status !== 'broken') return false
+      if (!appliance || appliance.status !== APPLIANCE_STATUS.BROKEN) return false
       
       if (repairCost > 0 && state.money < repairCost) return false
       
@@ -351,7 +351,7 @@ export function createApplianceStateModule(userData) {
         state.money -= repairCost
       }
       
-      appliance.status = 'repairing'
+      appliance.status = APPLIANCE_STATUS.REPAIRING
       appliance.progress = 0
       appliance.startTime = Date.now()
       appliance.processTime = repairTime
@@ -362,7 +362,7 @@ export function createApplianceStateModule(userData) {
     // 更新修理进度
     updateRepairingProgress(applianceId) {
       const appliance = applianceStates[applianceId]
-      if (!appliance || appliance.status !== 'repairing') return
+      if (!appliance || appliance.status !== APPLIANCE_STATUS.REPAIRING) return
       
       const elapsed = Date.now() - appliance.startTime
       appliance.progress = Math.min(100, (elapsed / appliance.processTime) * 100)
@@ -375,13 +375,13 @@ export function createApplianceStateModule(userData) {
     // 检查厨具是否损坏
     isApplianceBroken(applianceId) {
       const appliance = applianceStates[applianceId]
-      return appliance && appliance.status === 'broken'
+      return appliance && appliance.status === APPLIANCE_STATUS.BROKEN
     },
     
     // 检查厨具是否正在修理
     isApplianceRepairing(applianceId) {
       const appliance = applianceStates[applianceId]
-      return appliance && appliance.status === 'repairing'
+      return appliance && appliance.status === APPLIANCE_STATUS.REPAIRING
     },
     
     // 更新厨具位置

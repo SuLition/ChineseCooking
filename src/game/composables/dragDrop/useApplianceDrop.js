@@ -8,6 +8,7 @@
 import { useGameStore } from '../../stores/gameStore'
 import { appliances } from '../../data/appliances'
 import { preparedIngredients } from '../../data/ingredients'
+import { APPLIANCE_STATUS } from '../../constants'
 import {
   parseDragData,
   canDrop,
@@ -47,7 +48,7 @@ export function useApplianceDrop(options) {
 
     // 如果正在拖拽盘子，检查厨具是否已完成
     if (isDraggingPlate()) {
-      if (appliance.status === 'done') {
+      if (appliance.status === APPLIANCE_STATUS.DONE) {
         e.dataTransfer.dropEffect = 'move'
         e.currentTarget.classList.add('drag-over')
       } else {
@@ -106,10 +107,10 @@ export function useApplianceDrop(options) {
 
     // 垃圾桶特殊处理：只允许 idle 和 hasIngredients 状态
     if (applianceData?.type === 'trash') {
-      if (status !== 'idle' && status !== 'hasIngredients') return
+      if (status !== APPLIANCE_STATUS.IDLE && status !== APPLIANCE_STATUS.HAS_INGREDIENTS) return
     } else {
       // 普通厨具：允许 idle、hasIngredients 和 done 状态接收食材
-      if (status !== 'idle' && status !== 'hasIngredients' && status !== 'done') return
+      if (status !== APPLIANCE_STATUS.IDLE && status !== APPLIANCE_STATUS.HAS_INGREDIENTS && status !== APPLIANCE_STATUS.DONE) return
     }
 
     // 尝试解析为统一JSON格式
@@ -155,7 +156,7 @@ export function useApplianceDrop(options) {
     }
 
     // 如果厨具是 done 状态，先将成品转为食材
-    if (appliance.status === 'done' && appliance.outputDish) {
+    if (appliance.status === APPLIANCE_STATUS.DONE && appliance.outputDish) {
       convertDoneToIngredients(applianceId)
     }
 
@@ -178,7 +179,6 @@ export function useApplianceDrop(options) {
 
       if (success) {
         inventory[item.id]--
-        showToast(`✅ 将 ${item.name} 放入${targetAppName}`, 'success')
       } else {
         showToast(`❌ 厨具已满或堆叠上限`, 'error')
       }
@@ -196,7 +196,6 @@ export function useApplianceDrop(options) {
           image: item.image,
           maxStack: item.maxStack || 1
         })
-        showToast(`✅ 将 ${item.name} 放入${targetAppName}`, 'success')
       }
 
     } else if (item.source === 'seasoning_bar') {
@@ -209,7 +208,6 @@ export function useApplianceDrop(options) {
         image: item.image,
         maxStack: item.maxStack || 3
       })
-      showToast(`✅ 添加了 ${item.name}`, 'success')
 
     } else if (item.source === 'appliance') {
       // 从另一个厨具拖入
@@ -226,7 +224,7 @@ export function useApplianceDrop(options) {
     if (!sourceAppliance) return
 
     // 处理成品菜/备菜（从 outputDish 来）
-    if (sourceAppliance.status === 'done' && sourceAppliance.outputDish) {
+    if (sourceAppliance.status === APPLIANCE_STATUS.DONE && sourceAppliance.outputDish) {
       const outputCount = sourceAppliance.outputDish.count || 1
       const success = store.addIngredientToAppliance(applianceId, {
         id: item.id,
@@ -239,8 +237,6 @@ export function useApplianceDrop(options) {
       })
       if (success) {
         store.resetAppliance(sourceApplianceId)
-        const countText = outputCount > 1 ? ` x${outputCount}` : ''
-        showToast(`✅ 将 ${item.name}${countText} 移到${targetAppName}继续加工`, 'success')
       } else {
         showToast(`❌ 厨具已满`, 'error')
       }
@@ -264,10 +260,9 @@ export function useApplianceDrop(options) {
         } else {
           sourceAppliance.ingredients.splice(slotIndex, 1)
           if (sourceAppliance.ingredients.length === 0) {
-            sourceAppliance.status = 'idle'
+            sourceAppliance.status = APPLIANCE_STATUS.IDLE
           }
         }
-        showToast(`✅ 将 ${item.name} 移到${targetAppName}`, 'success')
       } else {
         showToast(`❌ 厨具已满或堆叠上限`, 'error')
       }
@@ -310,7 +305,7 @@ export function useApplianceDrop(options) {
           } else {
             sourceAppliance.ingredients.splice(slotIndex, 1)
             if (sourceAppliance.ingredients.length === 0) {
-              sourceAppliance.status = 'idle'
+              sourceAppliance.status = APPLIANCE_STATUS.IDLE
             }
           }
           return
@@ -328,7 +323,7 @@ export function useApplianceDrop(options) {
           } else {
             sourceAppliance.ingredients.splice(slotIndex, 1)
             if (sourceAppliance.ingredients.length === 0) {
-              sourceAppliance.status = 'idle'
+              sourceAppliance.status = APPLIANCE_STATUS.IDLE
             }
           }
         } else {
@@ -344,7 +339,7 @@ export function useApplianceDrop(options) {
       if (sourceApplianceId === applianceId) return
 
       const sourceAppliance = applianceStates[sourceApplianceId]
-      if (sourceAppliance && sourceAppliance.status === 'done' && sourceAppliance.outputDish) {
+      if (sourceAppliance && sourceAppliance.status === APPLIANCE_STATUS.DONE && sourceAppliance.outputDish) {
         const dishData = sourceAppliance.outputDish
         const outputCount = dishData.count || 1
         const isPrepared = !!preparedIngredients[dishData.id]

@@ -3,6 +3,7 @@
  * 顾客卡片组件 - 新版布局
  */
 import { ref, computed } from 'vue'
+import { CUSTOMER_STATUS } from '../game/constants'
 
 const props = defineProps({
   customer: {
@@ -21,11 +22,11 @@ const emit = defineEmits(['select', 'serve-dish'])
 const isDragOver = ref(false)
 
 // 是否正在用餐
-const isEating = computed(() => props.customer.status === 'eating')
+const isEating = computed(() => props.customer.status === CUSTOMER_STATUS.EATING)
 
 // 根据状态计算心情表情
 function getMood(customer) {
-  if (customer.status === 'eating') return '😋'
+  if (customer.status === CUSTOMER_STATUS.EATING) return '😋'
   const percent = (customer.patience / customer.maxPatience) * 100
   if (percent < 30) return '😠'
   if (percent < 60) return '😐'

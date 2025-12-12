@@ -7,6 +7,7 @@
 
 import { ref, computed } from 'vue'
 import { useGameStore } from '../../stores/gameStore'
+import { APPLIANCE_STATUS, PLATE_STATUS } from '../../constants'
 import {
   canDrop,
   DropTargets
@@ -62,7 +63,7 @@ export function useSectionDrop(options) {
     const plate = plates.value[plateIndex]
 
     // 盘子现在只能装一个成品菜，只有空盘可以接收
-    if (!plate || plate.status !== 'empty') {
+    if (!plate || plate.status !== PLATE_STATUS.EMPTY) {
       showToast('❌ 盘子已有菜品', 'error')
       return
     }
@@ -74,7 +75,7 @@ export function useSectionDrop(options) {
     if (data.startsWith('appliance-dish:')) {
       const sourceApplianceId = data.replace('appliance-dish:', '')
       const sourceAppliance = applianceStates[sourceApplianceId]
-      if (sourceAppliance && sourceAppliance.status === 'done' && sourceAppliance.outputDish) {
+      if (sourceAppliance && sourceAppliance.status === APPLIANCE_STATUS.DONE && sourceAppliance.outputDish) {
         const dishData = sourceAppliance.outputDish
         const currentCount = dishData.count || 1
 
@@ -149,7 +150,7 @@ export function useSectionDrop(options) {
       }
 
       // 处理已完成的成品（从 outputDish）
-      if (sourceAppliance.status === 'done' && sourceAppliance.outputDish) {
+      if (sourceAppliance.status === APPLIANCE_STATUS.DONE && sourceAppliance.outputDish) {
         const outputCount = sourceAppliance.outputDish.count || 1
 
         // 根据 count 产出多个备菜
@@ -163,8 +164,6 @@ export function useSectionDrop(options) {
         }
 
         store.resetAppliance(sourceApplianceId)
-        const countText = outputCount > 1 ? ` x${outputCount}` : ''
-        showToast(`✅ 将 ${item.name}${countText} 放入备菜区`, 'success')
         clearDragStates()
         return
       }
@@ -198,7 +197,7 @@ export function useSectionDrop(options) {
         } else {
           sourceAppliance.ingredients.splice(slotIndex, 1)
           if (sourceAppliance.ingredients.length === 0) {
-            sourceAppliance.status = 'idle'
+            sourceAppliance.status = APPLIANCE_STATUS.IDLE
           }
         }
       }
@@ -245,7 +244,7 @@ export function useSectionDrop(options) {
         } else {
           sourceAppliance.ingredients.splice(slotIndex, 1)
           if (sourceAppliance.ingredients.length === 0) {
-            sourceAppliance.status = 'idle'
+            sourceAppliance.status = APPLIANCE_STATUS.IDLE
           }
         }
       }
@@ -256,7 +255,7 @@ export function useSectionDrop(options) {
       const sourceApplianceId = data.replace('appliance-dish:', '')
       const sourceAppliance = applianceStates[sourceApplianceId]
 
-      if (sourceAppliance && sourceAppliance.status === 'done' && sourceAppliance.outputDish) {
+      if (sourceAppliance && sourceAppliance.status === APPLIANCE_STATUS.DONE && sourceAppliance.outputDish) {
         const dishData = sourceAppliance.outputDish
         const outputCount = dishData.count || 1
 
@@ -334,7 +333,7 @@ export function useSectionDrop(options) {
         } else {
           sourceAppliance.ingredients.splice(slotIndex, 1)
           if (sourceAppliance.ingredients.length === 0) {
-            sourceAppliance.status = 'idle'
+            sourceAppliance.status = APPLIANCE_STATUS.IDLE
           }
         }
       }
@@ -367,7 +366,7 @@ export function useSectionDrop(options) {
           } else {
             sourceAppliance.ingredients.splice(slotIndex, 1)
             if (sourceAppliance.ingredients.length === 0) {
-              sourceAppliance.status = 'idle'
+              sourceAppliance.status = APPLIANCE_STATUS.IDLE
             }
           }
         } else {

@@ -7,6 +7,7 @@
 
 import { ref, reactive, computed } from 'vue'
 import { gameConfig } from '../../data/config'
+import { CUSTOMER_STATUS } from '../../constants'
 
 /**
  * 创建顾客状态
@@ -73,7 +74,7 @@ export function createCustomerState() {
       const toRemove = []
       customers.value.forEach((customer, index) => {
         // 用餐中的顾客不消耗耐心
-        if (customer.status === 'eating') return
+        if (customer.status === CUSTOMER_STATUS.EATING) return
         
         customer.patience -= 1
         if (customer.patience <= 0) {

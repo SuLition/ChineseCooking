@@ -5,6 +5,7 @@
  * 管理盘子状态、清洗、装盘、上菜等功能
  */
 import { ref, onUnmounted } from 'vue'
+import { PLATE_STATUS, APPLIANCE_STATUS } from '../constants'
 import { useGameStore } from '../stores/gameStore'
 
 /**
@@ -30,7 +31,7 @@ export function usePlates(options) {
   const store = useGameStore()
 
   // ========== 盘子状态 ==========
-  // status: 'empty' | 'hasDish' | 'dirty' | 'washing'
+  // status: PLATE_STATUS.EMPTY | PLATE_STATUS.HAS_DISH | PLATE_STATUS.DIRTY | PLATE_STATUS.WASHING
   const plates = ref([])
 
   // 清洗定时器
@@ -43,7 +44,7 @@ export function usePlates(options) {
    */
   function initPlates() {
     plates.value = Array.from({ length: userData.plates }, () => ({
-      status: 'empty',
+      status: PLATE_STATUS.EMPTY,
       dish: null
     }))
   }
@@ -79,10 +80,10 @@ export function usePlates(options) {
    */
   function handlePlateWash(plateIndex) {
     const plate = plates.value[plateIndex]
-    if (!plate || plate.status !== 'dirty') return
+    if (!plate || plate.status !== PLATE_STATUS.DIRTY) return
 
     plates.value[plateIndex] = {
-      status: 'washing',
+      status: PLATE_STATUS.WASHING,
       dish: null,
       washProgress: 0,
       washStartTime: Date.now(),
@@ -99,7 +100,7 @@ export function usePlates(options) {
     let hasWashingPlates = false
 
     plates.value.forEach((plate, index) => {
-      if (plate.status === 'washing') {
+      if (plate.status === PLATE_STATUS.WASHING) {
         hasWashingPlates = true
         const elapsed = Date.now() - plate.washStartTime
         const progress = Math.min(100, (elapsed / plate.washDuration) * 100)
@@ -117,7 +118,7 @@ export function usePlates(options) {
         // 清洗完成
         if (progress >= 100) {
           plates.value[index] = {
-            status: 'empty',
+            status: PLATE_STATUS.EMPTY,
             dish: null
           }
         }
@@ -137,13 +138,12 @@ export function usePlates(options) {
    */
   function handlePlateClear(plateIndex) {
     const plate = plates.value[plateIndex]
-    if (!plate || plate.status === 'empty') return
+    if (!plate || plate.status === PLATE_STATUS.EMPTY) return
 
     plates.value[plateIndex] = {
-      status: 'empty',
+      status: PLATE_STATUS.EMPTY,
       dish: null
     }
-    showToast?.('🗑️ 已清空盘子', 'success')
   }
 
   /**
@@ -154,9 +154,9 @@ export function usePlates(options) {
    */
   function addDishToPlate(plateIndex, dish) {
     const plate = plates.value[plateIndex]
-    if (!plate || plate.status !== 'empty') return false
+    if (!plate || plate.status !== PLATE_STATUS.EMPTY) return false
 
-    plate.status = 'hasDish'
+    plate.status = PLATE_STATUS.HAS_DISH
     plate.dish = {
       id: dish.id,
       name: dish.name,
@@ -184,7 +184,7 @@ export function usePlates(options) {
    */
   function handleServeDish(plateIndex, customer) {
     const plate = plates.value[plateIndex]
-    if (!plate || plate.status !== 'hasDish' || !plate.dish) {
+    if (!plate || plate.status !== PLATE_STATUS.HAS_DISH || !plate.dish) {
       showToast?.('❌ 盘子里没有菜品', 'error')
       return
     }
@@ -192,7 +192,7 @@ export function usePlates(options) {
     // 检查是否触发菜撒事件
     if (randomEventsSystem?.checkPlateSpill?.(plate, plateIndex)) {
       plates.value[plateIndex] = {
-        status: 'dirty',
+        status: PLATE_STATUS.DIRTY,
         dish: null
       }
       return
@@ -209,7 +209,7 @@ export function usePlates(options) {
     const result = serveCustomer?.(customerIndex, plate.dish.id)
     if (result) {
       plates.value[plateIndex] = {
-        status: 'dirty',
+        status: PLATE_STATUS.DIRTY,
         dish: null
       }
     }
@@ -224,13 +224,13 @@ export function usePlates(options) {
     if (draggingPlateIndex < 0) return
 
     const plate = plates.value[draggingPlateIndex]
-    if (!plate || plate.status !== 'empty') {
+    if (!plate || plate.status !== PLATE_STATUS.EMPTY) {
       showToast?.('❌ 盘子已有菜品', 'error')
       return
     }
 
     const appliance = applianceStates[applianceId]
-    if (!appliance || appliance.status !== 'done') {
+    if (!appliance || appliance.status !== APPLIANCE_STATUS.DONE) {
       showToast?.('❌ 厨具还没做好', 'error')
       return
     }
@@ -244,7 +244,6 @@ export function usePlates(options) {
 
     // 装盘
     addDishToPlate(draggingPlateIndex, dish)
-    showToast?.(`✅ 将 ${dish.name} 装盘`, 'success')
   }
 
   // ========== 清理 ==========

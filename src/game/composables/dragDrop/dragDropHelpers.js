@@ -8,6 +8,7 @@
 import { useGameStore } from '../../stores/gameStore'
 import { appliances } from '../../data/appliances'
 import { preparedIngredients } from '../../data/ingredients'
+import { APPLIANCE_STATUS } from '../../constants'
 
 /**
  * 创建拖放辅助函数
@@ -33,7 +34,7 @@ export function createDragDropHelpers(options) {
    */
   function convertDoneToIngredients(applianceId) {
     const appliance = applianceStates[applianceId]
-    if (!appliance || appliance.status !== 'done' || !appliance.outputDish) return
+    if (!appliance || appliance.status !== APPLIANCE_STATUS.DONE || !appliance.outputDish) return
 
     const outputDish = appliance.outputDish
     const outputCount = outputDish.count || 1
@@ -47,7 +48,7 @@ export function createDragDropHelpers(options) {
     appliance.outputDish = null
     appliance.burnProgress = 0
     appliance.progress = 0
-    appliance.status = 'hasIngredients'
+    appliance.status = APPLIANCE_STATUS.HAS_INGREDIENTS
 
     // 将成品作为食材添加到槽位
     store.addIngredientToAppliance(applianceId, {
@@ -110,7 +111,7 @@ export function createDragDropHelpers(options) {
       if (!sourceAppliance) return
 
       // 处理已完成的成品（从 outputDish）
-      if (sourceAppliance.status === 'done' && sourceAppliance.outputDish) {
+      if (sourceAppliance.status === APPLIANCE_STATUS.DONE && sourceAppliance.outputDish) {
         const outputCount = sourceAppliance.outputDish.count || 1
         // 每个成品占用一个垃圾位
         for (let i = 0; i < outputCount; i++) {
@@ -139,7 +140,7 @@ export function createDragDropHelpers(options) {
         } else {
           sourceAppliance.ingredients.splice(slotIndex, 1)
           if (sourceAppliance.ingredients.length === 0) {
-            sourceAppliance.status = 'idle'
+            sourceAppliance.status = APPLIANCE_STATUS.IDLE
           }
         }
       }
@@ -165,7 +166,7 @@ export function createDragDropHelpers(options) {
     } else {
       sourceAppliance.ingredients.splice(slotIndex, 1)
       if (sourceAppliance.ingredients.length === 0) {
-        sourceAppliance.status = 'idle'
+        sourceAppliance.status = APPLIANCE_STATUS.IDLE
       }
     }
     

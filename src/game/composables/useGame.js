@@ -7,6 +7,7 @@
  */
 
 import { ref, onUnmounted, computed } from 'vue'
+import { APPLIANCE_STATUS, CUSTOMER_STATUS } from '../constants'
 import { useGameStore } from '../stores/gameStore'
 import { TimeSystem } from '../systems/TimeSystem'
 import { CustomerSystem } from '../systems/CustomerSystem'
@@ -257,7 +258,7 @@ export function useGame() {
     
     // 检查厨具
     const hasProcessingAppliance = Object.values(store.applianceStates).some(
-      app => app.status === 'processing' || app.status === 'cleaning'
+      app => app.status === APPLIANCE_STATUS.PROCESSING || app.status === APPLIANCE_STATUS.CLEANING
     )
     
     // 如果都完成了，正式关店
@@ -387,7 +388,7 @@ export function useGame() {
         const appliance = store.applianceStates[applianceId]
         const applianceData = appliances[applianceId]
         
-        if (appliance.status === 'processing') {
+        if (appliance.status === APPLIANCE_STATUS.PROCESSING) {
           // 停电时暂停烹饪
           if (isPowerOutage.value) {
             return
@@ -406,7 +407,7 @@ export function useGame() {
           store.updateApplianceProgress(applianceId)
           
           // 检查是否完成
-          if (appliance.status === 'done') {
+          if (appliance.status === APPLIANCE_STATUS.DONE) {
             soundManager.playSizzle()
             
             // 打烊期间检查是否可以完成关店
@@ -414,7 +415,7 @@ export function useGame() {
               checkCanFinishClose()
             }
           }
-        } else if (appliance.status === 'done' && applianceData?.burnTime > 0) {
+        } else if (appliance.status === APPLIANCE_STATUS.DONE && applianceData?.burnTime > 0) {
           // 更新烧焦进度（开店和打烊期间都会烧焦）
           const elapsed = Date.now() - appliance.burnTimer
           appliance.burnProgress = Math.min(100, (elapsed / applianceData.burnTime) * 100)
@@ -424,13 +425,13 @@ export function useGame() {
             soundManager.playFail()
             showToast(`🔥 ${applianceData.name}上的食材烧焦了！`, 'error')
           }
-        } else if (appliance.status === 'cleaning') {
+        } else if (appliance.status === APPLIANCE_STATUS.CLEANING) {
           // 垃圾桶清理进度特殊处理
           if (applianceData?.type === 'trash') {
             store.updateTrashCleaningProgress(applianceId)
             
             // 清理完成后检查是否可以关店
-            if (appliance.status === 'idle') {
+            if (appliance.status === APPLIANCE_STATUS.IDLE) {
               if (isClosing) {
                 checkCanFinishClose()
               }
@@ -439,16 +440,16 @@ export function useGame() {
             store.updateCleaningProgress(applianceId)
             
             // 清理完成后检查是否可以关店
-            if (appliance.status === 'idle' && isClosing) {
+            if (appliance.status === APPLIANCE_STATUS.IDLE && isClosing) {
               checkCanFinishClose()
             }
           }
-        } else if (appliance.status === 'repairing') {
+        } else if (appliance.status === APPLIANCE_STATUS.REPAIRING) {
           // 厨具修理进度
           store.updateRepairingProgress(applianceId)
           
           // 修理完成
-          if (appliance.status === 'idle') {
+          if (appliance.status === APPLIANCE_STATUS.IDLE) {
             soundManager.playSuccess()
             if (isClosing) {
               checkCanFinishClose()
@@ -535,13 +536,13 @@ export function useGame() {
     const appliance = store.applianceStates[applianceId]
     const applianceData = appliances[applianceId]
     
-    if (appliance.status === 'done') {
+    if (appliance.status === APPLIANCE_STATUS.DONE) {
       // 收取备菜
       const output = store.collectPrepared(applianceId)
       if (output) {
         soundManager.playSuccess()
       }
-    } else if (appliance.status === 'burned') {
+    } else if (appliance.status === APPLIANCE_STATUS.BURNED) {
       // 开始清理
       const cleanTime = applianceData?.cleanTime || 2000
       if (store.cleanAppliance(applianceId, cleanTime)) {
@@ -589,7 +590,7 @@ export function useGame() {
     }
     
     // 开始用餐
-    customer.status = 'eating'
+    customer.status = CUSTOMER_STATUS.EATING
     customer.eatingProgress = 0
     customer.eatingTime = 3000 // 3秒用餐时间
     customer.eatingStartTime = Date.now()
@@ -606,7 +607,7 @@ export function useGame() {
     const toComplete = []
     
     store.customers.value.forEach((customer, index) => {
-      if (customer.status === 'eating') {
+      if (customer.status === CUSTOMER_STATUS.EATING) {
         const elapsed = Date.now() - customer.eatingStartTime
         const newProgress = Math.min(100, (elapsed / customer.eatingTime) * 100)
         customer.eatingProgress = newProgress

@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { PLATE_STATUS } from '../game/constants'
 
 /**
  * 盘子区域组件
@@ -37,17 +38,17 @@ const btnHoverIndex = ref(-1)
 
 // 获取盘子数据
 function getPlate(index) {
-  return props.plates[index] || { status: 'empty', dish: null }
+  return props.plates[index] || { status: PLATE_STATUS.EMPTY, dish: null }
 }
 
 // 获取盘子状态class
 function getPlateClass(index) {
   const plate = getPlate(index)
   return {
-    'is-empty': plate.status === 'empty',
-    'has-dish': plate.status === 'hasDish',
-    'is-dirty': plate.status === 'dirty',
-    'is-washing': plate.status === 'washing',
+    'is-empty': plate.status === PLATE_STATUS.EMPTY,
+    'has-dish': plate.status === PLATE_STATUS.HAS_DISH,
+    'is-dirty': plate.status === PLATE_STATUS.DIRTY,
+    'is-washing': plate.status === PLATE_STATUS.WASHING,
     'is-dragging': draggingPlateIndex.value === index,
     'is-drop-target': hoverPlateIndex.value === index && props.isDraggingItem
   }
@@ -56,14 +57,14 @@ function getPlateClass(index) {
 // 盘子是否可拖拽（有成品菜的盘子可以拖放）
 function isPlateDraggable(index) {
   const plate = getPlate(index)
-  return plate.status === 'hasDish' && !!plate.dish
+  return plate.status === PLATE_STATUS.HAS_DISH && !!plate.dish
 }
 
 // 盘子是否可接收成品菜
 function canAcceptItem(index) {
   const plate = getPlate(index)
   // 只有空盘可以接收
-  return plate.status === 'empty'
+  return plate.status === PLATE_STATUS.EMPTY
 }
 
 // 开始拖拽盘子
@@ -71,7 +72,7 @@ function handleDragStart(e, plateIndex) {
   const plate = getPlate(plateIndex)
   
   // 只有有成品菜的盘子才能拖拽
-  if (plate.status !== 'hasDish' || !plate.dish) {
+  if (plate.status !== PLATE_STATUS.HAS_DISH || !plate.dish) {
     e.preventDefault()
     return
   }
@@ -182,12 +183,12 @@ function handleWash(plateIndex) {
       <!-- 圆形盘子区域 -->
       <div class="plate-circle">
         <!-- 空盘 -->
-        <template v-if="getPlate(plateIndex - 1).status === 'empty'">
+        <template v-if="getPlate(plateIndex - 1).status === PLATE_STATUS.EMPTY">
           <span class="empty-icon">🍽️</span>
         </template>
         
         <!-- 有成品菜 - 只显示图片/图标 -->
-        <template v-else-if="getPlate(plateIndex - 1).status === 'hasDish' && getPlate(plateIndex - 1).dish">
+        <template v-else-if="getPlate(plateIndex - 1).status === PLATE_STATUS.HAS_DISH && getPlate(plateIndex - 1).dish">
           <img 
             v-if="getPlate(plateIndex - 1).dish.image" 
             :src="getPlate(plateIndex - 1).dish.image" 
@@ -198,19 +199,19 @@ function handleWash(plateIndex) {
         </template>
         
         <!-- 待清洗状态 -->
-        <template v-else-if="getPlate(plateIndex - 1).status === 'dirty'">
+        <template v-else-if="getPlate(plateIndex - 1).status === PLATE_STATUS.DIRTY">
           <span class="dirty-icon">🧹</span>
         </template>
         
         <!-- 清洗中状态 - 只显示图标 -->
-        <template v-else-if="getPlate(plateIndex - 1).status === 'washing'">
+        <template v-else-if="getPlate(plateIndex - 1).status === PLATE_STATUS.WASHING">
           <span class="washing-icon">🧼</span>
         </template>
       </div>
       
       <!-- 下方按钮 / 清洗进度条 -->
       <!-- 清洗中显示进度条 -->
-      <div v-if="getPlate(plateIndex - 1).status === 'washing'" class="wash-progress-bar">
+      <div v-if="getPlate(plateIndex - 1).status === PLATE_STATUS.WASHING" class="wash-progress-bar">
         <div 
           class="wash-progress-fill" 
           :style="{ width: (getPlate(plateIndex - 1).washProgress || 0) + '%' }"
@@ -222,18 +223,18 @@ function handleWash(plateIndex) {
         v-else
         class="plate-btn"
         draggable="false"
-        :disabled="getPlate(plateIndex - 1).status === 'empty'"
-        @click.stop="getPlate(plateIndex - 1).status === 'dirty' ? handleWash(plateIndex - 1) : handleClear(plateIndex - 1)"
+        :disabled="getPlate(plateIndex - 1).status === PLATE_STATUS.EMPTY"
+        @click.stop="getPlate(plateIndex - 1).status === PLATE_STATUS.DIRTY ? handleWash(plateIndex - 1) : handleClear(plateIndex - 1)"
         @mouseenter="btnHoverIndex = plateIndex - 1"
         @mouseleave="btnHoverIndex = -1"
         @dragstart.stop.prevent
       >
         <!-- 有菜 -->
-        <template v-if="getPlate(plateIndex - 1).status === 'hasDish'">
+        <template v-if="getPlate(plateIndex - 1).status === PLATE_STATUS.HAS_DISH">
           {{ btnHoverIndex === plateIndex - 1 ? '清空' : getPlate(plateIndex - 1).dish?.name || '菜品' }}
         </template>
         <!-- 待清洗 -->
-        <template v-else-if="getPlate(plateIndex - 1).status === 'dirty'">
+        <template v-else-if="getPlate(plateIndex - 1).status === PLATE_STATUS.DIRTY">
           点击清洗
         </template>
         <!-- 空盘 -->

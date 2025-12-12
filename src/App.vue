@@ -31,7 +31,7 @@ import { useGameStore } from './game/stores/gameStore'
 import { rawIngredients, preparedIngredients, seasonings } from './game/data/ingredients'
 import { appliances } from './game/data/appliances'
 import { dishes } from './game/data/dishes'
-import { GRID } from './game/constants'
+import { GRID, APPLIANCE_STATUS } from './game/constants'
 
 // ========== 初始化游戏 ==========
 const {
@@ -314,7 +314,7 @@ function handleBuyAppliance(applianceId, price) {
     applianceStates[applianceId] = {
       ...applianceData,
       items: [],
-      status: 'idle',
+      status: APPLIANCE_STATUS.IDLE,
       progress: 0,
       resultDish: null,
       burnProgress: 0

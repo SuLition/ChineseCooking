@@ -5,6 +5,8 @@
  * 提供统一的状态对象创建方法
  */
 
+import { APPLIANCE_STATUS, PLATE_STATUS } from '../constants'
+
 /**
  * 创建厨具状态对象
  * @param {Object} options - 可选配置
@@ -17,7 +19,7 @@
  */
 export function createApplianceState(options = {}) {
   return {
-    status: options.status || 'idle',
+    status: options.status || APPLIANCE_STATUS.IDLE,
     ingredients: options.ingredients || [],
     outputDish: options.outputDish || null,
     progress: options.progress || 0,
@@ -34,7 +36,7 @@ export function createApplianceState(options = {}) {
  * 创建空闲厨具状态
  */
 export function createIdleApplianceState() {
-  return createApplianceState({ status: 'idle' })
+  return createApplianceState({ status: APPLIANCE_STATUS.IDLE })
 }
 
 /**
@@ -43,7 +45,7 @@ export function createIdleApplianceState() {
  */
 export function createHasIngredientsState(ingredients = []) {
   return createApplianceState({
-    status: 'hasIngredients',
+    status: APPLIANCE_STATUS.HAS_INGREDIENTS,
     ingredients
   })
 }
@@ -57,7 +59,7 @@ export function createHasIngredientsState(ingredients = []) {
  */
 export function createProcessingState(options = {}) {
   return createApplianceState({
-    status: 'processing',
+    status: APPLIANCE_STATUS.PROCESSING,
     ingredients: options.ingredients || [],
     outputDish: options.outputDish || null,
     progress: 0,
@@ -72,7 +74,7 @@ export function createProcessingState(options = {}) {
  */
 export function createDoneState(outputDish) {
   return createApplianceState({
-    status: 'done',
+    status: APPLIANCE_STATUS.DONE,
     outputDish,
     progress: 100,
     burnTimer: Date.now()
@@ -88,7 +90,7 @@ export function createDoneState(outputDish) {
  */
 export function createPlateState(options = {}) {
   return {
-    status: options.status || 'empty',
+    status: options.status || PLATE_STATUS.EMPTY,
     dish: options.dish || null,
     washProgress: options.washProgress || 0,
     washStartTime: options.washStartTime || 0,
@@ -100,7 +102,7 @@ export function createPlateState(options = {}) {
  * 创建空盘状态
  */
 export function createEmptyPlateState() {
-  return createPlateState({ status: 'empty' })
+  return createPlateState({ status: PLATE_STATUS.EMPTY })
 }
 
 /**
@@ -109,7 +111,7 @@ export function createEmptyPlateState() {
  */
 export function createHasDishPlateState(dish) {
   return createPlateState({
-    status: 'hasDish',
+    status: PLATE_STATUS.HAS_DISH,
     dish
   })
 }
@@ -118,7 +120,7 @@ export function createHasDishPlateState(dish) {
  * 创建脏盘状态
  */
 export function createDirtyPlateState() {
-  return createPlateState({ status: 'dirty' })
+  return createPlateState({ status: PLATE_STATUS.DIRTY })
 }
 
 /**
@@ -126,7 +128,7 @@ export function createDirtyPlateState() {
  */
 export function createWashingPlateState(duration = 2000) {
   return createPlateState({
-    status: 'washing',
+    status: PLATE_STATUS.WASHING,
     washProgress: 0,
     washStartTime: Date.now(),
     washDuration: duration

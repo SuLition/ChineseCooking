@@ -5,6 +5,7 @@
 import { computed, ref, inject } from 'vue'
 import { appliances } from '../game/data/appliances'
 import { preparedIngredients } from '../game/data/ingredients'
+import { APPLIANCE_STATUS } from '../game/constants'
 
 // 注入父组件提供的方法
 const clickAppliance = inject('clickAppliance')
@@ -88,7 +89,7 @@ const burnedText = computed(() => {
 function getDragTargetClass() {
   // 如果正在拖拽盘子
   if (props.draggingPlate) {
-    if (props.applianceState.status === 'done') return 'drag-can-drop'
+    if (props.applianceState.status === APPLIANCE_STATUS.DONE) return 'drag-can-drop'
     return 'drag-unavailable'
   }
   // 如果正在拖拽食材/备菜/调料
@@ -99,7 +100,7 @@ function getDragTargetClass() {
   // 垃圾桶特殊处理：接受所有类型的物品
   if (isTrashBin.value) {
     // 只有空闲或有垃圾状态才能添加
-    if (status !== 'idle' && status !== 'hasIngredients') return 'drag-unavailable'
+    if (status !== APPLIANCE_STATUS.IDLE && status !== APPLIANCE_STATUS.HAS_INGREDIENTS) return 'drag-unavailable'
     // 检查容量
     const currentCount = props.applianceState.trashCount || 0
     const capacity = applianceData.value?.capacity || 20
@@ -108,7 +109,7 @@ function getDragTargetClass() {
   }
   
   // 厨具必须是空闲、有食材或完成状态
-  if (status !== 'idle' && status !== 'hasIngredients' && status !== 'done') return 'drag-unavailable'
+  if (status !== APPLIANCE_STATUS.IDLE && status !== APPLIANCE_STATUS.HAS_INGREDIENTS && status !== APPLIANCE_STATUS.DONE) return 'drag-unavailable'
   
   // 检查是否允许放入该厨具
   const allowed = props.allowedAppliances
@@ -126,24 +127,24 @@ function getDisplayName() {
   
   // 垃圾桶特殊显示
   if (isTrashBin.value) {
-    if (appliance.status === 'cleaning') return '🗑️ 清理中...'
+    if (appliance.status === APPLIANCE_STATUS.CLEANING) return '🗑️ 清理中...'
     const count = appliance.trashCount || 0
     const capacity = data?.capacity || 20
     return `垃圾桶: ${Math.round((count / capacity) * 100)}%`
   }
   
-  if (appliance.status === 'burned') return burnedText.value
-  if (appliance.status === 'cleaning') return '🧹 清理中...'
-  if (appliance.status === 'broken') return '🔧 损坏了!'
-  if (appliance.status === 'repairing') return '🔧 修理中...'
+  if (appliance.status === APPLIANCE_STATUS.BURNED) return burnedText.value
+  if (appliance.status === APPLIANCE_STATUS.CLEANING) return '🧹 清理中...'
+  if (appliance.status === APPLIANCE_STATUS.BROKEN) return '🔧 损坏了!'
+  if (appliance.status === APPLIANCE_STATUS.REPAIRING) return '🔧 修理中...'
   // 专属事件状态
   if (eventConfig.value) return eventConfig.value.icon + ' ' + eventConfig.value.name
-  if (appliance.status === 'processing') return '处理中...'
-  if (appliance.status === 'done') {
+  if (appliance.status === APPLIANCE_STATUS.PROCESSING) return '处理中...'
+  if (appliance.status === APPLIANCE_STATUS.DONE) {
     // 显示成品菜名称
     return appliance.outputDish?.name || '❓ 未知菜品'
   }
-  if (appliance.status === 'hasIngredients') {
+  if (appliance.status === APPLIANCE_STATUS.HAS_INGREDIENTS) {
     return data?.name || props.applianceId
   }
   return data?.name || props.applianceId
@@ -183,7 +184,7 @@ function handleStartCooking() {
 
 // 获取槽位内容（根据状态返回不同内容）
 function getSlotContent(index) {
-  if (props.applianceState.status === 'done') {
+  if (props.applianceState.status === APPLIANCE_STATUS.DONE) {
     // 完成状态：第一个槽显示成品，其他为空
     if (index === 0 && props.applianceState.outputDish) {
       return props.applianceState.outputDish
@@ -198,11 +199,11 @@ function getSlotContent(index) {
 function isSlotDraggable(index) {
   const status = props.applianceState.status
   // 有食材状态：食材可拖拽
-  if (status === 'hasIngredients') {
+  if (status === APPLIANCE_STATUS.HAS_INGREDIENTS) {
     return !!props.applianceState.ingredients[index]
   }
   // 完成状态：成品可拖拽
-  if (status === 'done') {
+  if (status === APPLIANCE_STATUS.DONE) {
     return index === 0 && !!props.applianceState.outputDish
   }
   return false
@@ -269,7 +270,7 @@ function handleSlotDragStart(e, index) {
     document.body.removeChild(dragPreview)
   }, 0)
   
-  if (status === 'hasIngredients') {
+  if (status === APPLIANCE_STATUS.HAS_INGREDIENTS) {
     // 拖拽未处理的食材
     e.dataTransfer.setData('text/plain', `appliance-ingredient:${props.applianceId}:${index}`)
     
@@ -285,7 +286,7 @@ function handleSlotDragStart(e, index) {
         type: itemType  // 确保类型字段存在
       }
     })
-  } else if (status === 'done') {
+  } else if (status === APPLIANCE_STATUS.DONE) {
     // 拖拽完成的成品
     e.dataTransfer.setData('text/plain', `appliance-dish:${props.applianceId}`)
     
@@ -332,7 +333,7 @@ function handleSlotDragEnd(e) {
     @mouseleave="showActions = false"
   >
     <!-- 空闲状态：显示厨具图片（垃圾桶使用特殊布局） -->
-    <div class="appliance-icon" v-if="applianceState.status === 'idle' && !isTrashBin">
+    <div class="appliance-icon" v-if="applianceState.status === APPLIANCE_STATUS.IDLE && !isTrashBin">
       <img v-if="applianceData?.image" :src="applianceData.image" :alt="applianceData.name" class="appliance-img" />
       <span v-else>{{ applianceData?.icon || '❓' }}</span>
     </div>
@@ -340,7 +341,7 @@ function handleSlotDragEnd(e) {
     <!-- 垃圾桶特殊布局：容量槽 + 清理按钮 -->
     <div 
       class="trash-bin-layout" 
-      v-if="isTrashBin && (applianceState.status === 'idle' || applianceState.status === 'hasIngredients')"
+      v-if="isTrashBin && (applianceState.status === APPLIANCE_STATUS.IDLE || applianceState.status === APPLIANCE_STATUS.HAS_INGREDIENTS)"
     >
       <!-- 容量显示区域 -->
       <div class="trash-capacity-container">
@@ -364,7 +365,7 @@ function handleSlotDragEnd(e) {
     </div>
     
     <!-- 垃圾桶清理中状态 -->
-    <div class="trash-bin-layout" v-else-if="isTrashBin && applianceState.status === 'cleaning'">
+    <div class="trash-bin-layout" v-else-if="isTrashBin && applianceState.status === APPLIANCE_STATUS.CLEANING">
       <div class="trash-capacity-container">
         <div class="trash-capacity-empty"></div>
         <div 
@@ -383,7 +384,7 @@ function handleSlotDragEnd(e) {
     <!-- 有食材或处理中或完成状态：动态布局（垃圾桶除外） -->
     <div 
       class="has-ingredients-layout" 
-      v-else-if="!isTrashBin && (applianceState.status === 'hasIngredients' || applianceState.status === 'processing' || applianceState.status === 'done')"
+      v-else-if="!isTrashBin && (applianceState.status === APPLIANCE_STATUS.HAS_INGREDIENTS || applianceState.status === APPLIANCE_STATUS.PROCESSING || applianceState.status === APPLIANCE_STATUS.DONE)"
       :style="{ 
         gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
         gridTemplateRows: `repeat(${contentRows}, minmax(0, 1fr)) auto`
@@ -396,7 +397,7 @@ function handleSlotDragEnd(e) {
         class="ingredient-slot"
         :class="{ 
           'has-item': getSlotContent(slotIndex - 1),
-          'is-processing': applianceState.status === 'processing',
+          'is-processing': applianceState.status === APPLIANCE_STATUS.PROCESSING,
           'is-draggable': isSlotDraggable(slotIndex - 1)
         }"
         :draggable="isSlotDraggable(slotIndex - 1)"
@@ -424,21 +425,21 @@ function handleSlotDragEnd(e) {
       <div class="action-row" :style="{ gridColumn: `1 / ${gridCols + 1}` }">
         <!-- 有食材状态：按钮 -->
         <button 
-          v-if="applianceState.status === 'hasIngredients'"
+          v-if="applianceState.status === APPLIANCE_STATUS.HAS_INGREDIENTS"
           class="action-btn start-btn" 
           @click.stop="handleStartCooking"
         >
           {{ actionButtonText.replace(/^.+\s/, '') }}
         </button>
         <!-- 处理中状态：文字 + 进度条 -->
-        <div v-else-if="applianceState.status === 'processing'" class="processing-section">
+        <div v-else-if="applianceState.status === APPLIANCE_STATUS.PROCESSING" class="processing-section">
           <span class="processing-text">处理中</span>
           <div class="inline-progress">
             <div class="inline-progress-fill" :style="{ width: applianceState.progress + '%' }"></div>
           </div>
         </div>
         <!-- 完成状态：显示完成文字 + 烧糊进度条 -->
-        <div v-else-if="applianceState.status === 'done'" class="done-section">
+        <div v-else-if="applianceState.status === APPLIANCE_STATUS.DONE" class="done-section">
           <span class="done-text" :class="{ warning: canBurn && applianceState.burnProgress > 50 }">
             {{ canBurn && applianceState.burnProgress > 50 ? '快糊了' : '完成' }}
           </span>
@@ -450,17 +451,17 @@ function handleSlotDragEnd(e) {
     </div>
     
     <!-- 烧焦状态 -->
-    <div class="appliance-icon burned-icon" v-else-if="applianceState.status === 'burned'">
+    <div class="appliance-icon burned-icon" v-else-if="applianceState.status === APPLIANCE_STATUS.BURNED">
       <span>🔥</span>
     </div>
     
     <!-- 清理状态 -->
-    <div class="appliance-icon" v-else-if="applianceState.status === 'cleaning'">
+    <div class="appliance-icon" v-else-if="applianceState.status === APPLIANCE_STATUS.CLEANING">
       <span>🧹</span>
     </div>
     
     <!-- 损坏状态 -->
-    <div class="broken-layout" v-else-if="applianceState.status === 'broken'">
+    <div class="broken-layout" v-else-if="applianceState.status === APPLIANCE_STATUS.BROKEN">
       <div class="broken-icon">
         <span>🔧</span>
       </div>
@@ -473,7 +474,7 @@ function handleSlotDragEnd(e) {
     </div>
     
     <!-- 修理中状态 -->
-    <div class="repairing-layout" v-else-if="applianceState.status === 'repairing'">
+    <div class="repairing-layout" v-else-if="applianceState.status === APPLIANCE_STATUS.REPAIRING">
       <div class="repairing-icon">
         <span>🔧</span>
       </div>
@@ -500,15 +501,15 @@ function handleSlotDragEnd(e) {
     </div>
     
     <!-- 厨具名称/状态（只在空闲、烧焦、清理状态显示，垃圾桶除外） -->
-    <div class="appliance-name" v-if="!isTrashBin && (applianceState.status === 'idle' || applianceState.status === 'burned' || applianceState.status === 'cleaning')">{{ getDisplayName() }}</div>
+    <div class="appliance-name" v-if="!isTrashBin && (applianceState.status === APPLIANCE_STATUS.IDLE || applianceState.status === APPLIANCE_STATUS.BURNED || applianceState.status === APPLIANCE_STATUS.CLEANING)">{{ getDisplayName() }}</div>
 
     <!-- 清理进度条（垃圾桶除外） -->
-    <div class="appliance-progress" v-if="!isTrashBin && applianceState.status === 'cleaning'">
+    <div class="appliance-progress" v-if="!isTrashBin && applianceState.status === APPLIANCE_STATUS.CLEANING">
       <div class="progress-fill" :style="{ width: applianceState.progress + '%' }"></div>
     </div>
 
     <!-- 提示文字 -->
-    <div class="appliance-hint burn" v-if="applianceState.status === 'burned'">🧹 点击清理</div>
+    <div class="appliance-hint burn" v-if="applianceState.status === APPLIANCE_STATUS.BURNED">🧹 点击清理</div>
   </div>
 </template>
 

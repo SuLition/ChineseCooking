@@ -71,7 +71,7 @@ export function useCooking({ applianceStates, showToast, isShopOpen }) {
       }
       const store = useGameStore()
       if (store.startEmptyingTrash(applianceId)) {
-        showToast('🗑️ 正在清理垃圾桶...', 'success')
+        // 垃圾桶开始清理
       }
       return
     }
