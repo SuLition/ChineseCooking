@@ -3,7 +3,9 @@
  * 进货商店面板
  * ShopPanel Component
  */
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import { ingredientCategories, buyQuantityOptions } from '../game/data/shopItems'
+import { getPurchasableAppliances } from '../game/data/appliances'
 
 const props = defineProps({
   visible: {
@@ -17,79 +19,24 @@ const props = defineProps({
   inventory: {
     type: Object,
     default: () => ({})
+  },
+  ownedAppliances: {
+    type: Array,
+    default: () => []
   }
 })
 
-const emit = defineEmits(['close', 'buy'])
+const emit = defineEmits(['close', 'buy', 'buy-appliance'])
 
-// 食材商品数据（分类）
-const shopCategories = [
-  {
-    name: '蔬菜类',
-    icon: '🥬',
-    items: [
-      { id: 'vegetables', name: '青菜', icon: '🥬', price: 3 },
-      { id: 'cabbage', name: '白菜', icon: '🥗', price: 3 },
-      { id: 'tomato', name: '番茄', icon: '🍅', price: 4 },
-      { id: 'mushroom', name: '香菇', icon: '🍄', price: 5 },
-      { id: 'bamboo', name: '竹笋', icon: '🎋', price: 6 },
-      { id: 'eggplant', name: '茄子', icon: '🍆', price: 4 }
-    ]
-  },
-  {
-    name: '肉类',
-    icon: '🥩',
-    items: [
-      { id: 'pork', name: '猪肉', icon: '🥩', price: 8 },
-      { id: 'chicken', name: '鸡肉', icon: '🍗', price: 10 },
-      { id: 'beef', name: '牛肉', icon: '🥓', price: 15 },
-      { id: 'duck', name: '鸭肉', icon: '🦆', price: 18 }
-    ]
-  },
-  {
-    name: '海鲜类',
-    icon: '🦐',
-    items: [
-      { id: 'fish', name: '鱼', icon: '🐟', price: 12 },
-      { id: 'shrimp', name: '虾', icon: '🦐', price: 15 },
-      { id: 'crab', name: '螃蟹', icon: '🦀', price: 25 }
-    ]
-  },
-  {
-    name: '主食类',
-    icon: '🍚',
-    items: [
-      { id: 'rice', name: '米饭', icon: '🍚', price: 2 },
-      { id: 'noodles', name: '面条', icon: '🍜', price: 3 },
-      { id: 'flour', name: '面粉', icon: '🌾', price: 2 }
-    ]
-  },
-  {
-    name: '蛋豆类',
-    icon: '🥚',
-    items: [
-      { id: 'egg', name: '鸡蛋', icon: '🥚', price: 2 },
-      { id: 'tofu', name: '豆腐', icon: '🧈', price: 3 }
-    ]
-  },
-  {
-    name: '调料类',
-    icon: '🧂',
-    items: [
-      { id: 'chili', name: '辣椒', icon: '🌶️', price: 2 },
-      { id: 'ginger', name: '姜', icon: '🫚', price: 2 },
-      { id: 'garlic', name: '大蒜', icon: '🧄', price: 2 },
-      { id: 'spring_onion', name: '葱', icon: '🧅', price: 1 },
-      { id: 'soy_sauce', name: '酱油', icon: '🫗', price: 3 },
-      { id: 'vinegar', name: '醋', icon: '🍶', price: 3 },
-      { id: 'sugar', name: '糖', icon: '🧂', price: 2 },
-      { id: 'peanut', name: '花生', icon: '🥜', price: 4 }
-    ]
-  }
-]
+// 主分类标签页
+const activeTab = ref('ingredients') // 'ingredients' | 'equipment'
 
-// 购买数量选项
-const buyOptions = [1, 5, 10]
+// 使用数据模块
+const shopCategories = ingredientCategories
+const buyOptions = buyQuantityOptions
+
+// 可购买设备列表
+const purchasableEquipment = computed(() => getPurchasableAppliances())
 
 function getStock(itemId) {
   return props.inventory[itemId] || 0
@@ -104,53 +51,135 @@ function handleBuy(item, count) {
     emit('buy', item.id, count, item.price)
   }
 }
+
+// 检查设备是否已拥有
+function isOwned(applianceId) {
+  return props.ownedAppliances.includes(applianceId)
+}
+
+// 购买设备
+function handleBuyAppliance(appliance) {
+  if (!isOwned(appliance.id) && canAfford(appliance.price, 1)) {
+    emit('buy-appliance', appliance.id, appliance.price)
+  }
+}
 </script>
 
 <template>
   <div class="shop-overlay" :class="{ active: visible }" @click.self="$emit('close')">
     <div class="shop-panel">
       <div class="shop-header">
-        <span class="shop-title">🏪 进货商店</span>
+        <span class="shop-title">🏪 商店</span>
         <span class="shop-money">💰 {{ money }}</span>
         <button class="close-btn" @click="$emit('close')">✕</button>
       </div>
       
-      <div class="shop-content">
-        <div 
-          v-for="category in shopCategories" 
-          :key="category.name"
-          class="shop-category"
+      <!-- 主分类标签页 -->
+      <div class="shop-tabs">
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'ingredients' }"
+          @click="activeTab = 'ingredients'"
         >
-          <div class="category-header">
-            {{ category.icon }} {{ category.name }}
-          </div>
-          <div class="category-items">
-            <div 
-              v-for="item in category.items" 
-              :key="item.id"
-              class="shop-item"
-            >
-              <div class="item-icon">{{ item.icon }}</div>
-              <div class="item-info">
-                <div class="item-name">{{ item.name }}</div>
-                <div class="item-price">💰 {{ item.price }}/个</div>
-                <div class="item-stock">库存: {{ getStock(item.id) }}</div>
+          🥬 食材
+        </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'equipment' }"
+          @click="activeTab = 'equipment'"
+        >
+          🛠️ 设备
+        </button>
+      </div>
+      
+      <div class="shop-content">
+        <!-- 食材分类 -->
+        <template v-if="activeTab === 'ingredients'">
+          <div 
+            v-for="category in shopCategories" 
+            :key="category.name"
+            class="shop-category"
+          >
+            <div class="category-header">
+              {{ category.icon }} {{ category.name }}
+            </div>
+            <div class="category-items">
+              <div 
+                v-for="item in category.items" 
+                :key="item.id"
+                class="shop-item"
+              >
+                <div class="item-icon">{{ item.icon }}</div>
+                <div class="item-info">
+                  <div class="item-name">{{ item.name }}</div>
+                  <div class="item-price">💰 {{ item.price }}/个</div>
+                  <div class="item-stock">库存: {{ getStock(item.id) }}</div>
+                </div>
+                <div class="item-actions">
+                  <button 
+                    v-for="count in buyOptions"
+                    :key="count"
+                    class="buy-btn"
+                    :class="{ disabled: !canAfford(item.price, count) }"
+                    :disabled="!canAfford(item.price, count)"
+                    @click="handleBuy(item, count)"
+                  >
+                    +{{ count }}
+                  </button>
+                </div>
               </div>
-              <div class="item-actions">
+            </div>
+          </div>
+        </template>
+        
+        <!-- 设备分类 -->
+        <template v-else-if="activeTab === 'equipment'">
+          <div class="equipment-list">
+            <div 
+              v-for="appliance in purchasableEquipment" 
+              :key="appliance.id"
+              class="equipment-item"
+              :class="{ owned: isOwned(appliance.id) }"
+            >
+              <div class="equipment-icon">
+                <img v-if="appliance.image" :src="appliance.image" class="equipment-img" />
+                <span v-else>{{ appliance.icon }}</span>
+              </div>
+              <div class="equipment-info">
+                <div class="equipment-name">{{ appliance.name }}</div>
+                <div class="equipment-desc">{{ appliance.description }}</div>
+                <div class="equipment-stats">
+                  <span>容量: {{ appliance.capacity }}</span>
+                  <span v-if="appliance.requiresPower">⚡ 需要电力</span>
+                </div>
+              </div>
+              <div class="equipment-buy">
+                <div class="equipment-price">💰 {{ appliance.price }}</div>
                 <button 
-                  v-for="count in buyOptions"
-                  :key="count"
-                  class="buy-btn"
-                  :class="{ disabled: !canAfford(item.price, count) }"
-                  :disabled="!canAfford(item.price, count)"
-                  @click="handleBuy(item, count)"
+                  v-if="isOwned(appliance.id)"
+                  class="buy-btn owned"
+                  disabled
                 >
-                  +{{ count }}
+                  已拥有
+                </button>
+                <button 
+                  v-else
+                  class="buy-btn"
+                  :class="{ disabled: !canAfford(appliance.price, 1) }"
+                  :disabled="!canAfford(appliance.price, 1)"
+                  @click="handleBuyAppliance(appliance)"
+                >
+                  购买
                 </button>
               </div>
             </div>
           </div>
-        </div>
+          
+          <!-- 无可购买设备提示 -->
+          <div v-if="purchasableEquipment.length === 0" class="no-equipment">
+            🛠️ 暂无可购买的设备
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -223,6 +252,39 @@ function handleBuy(item, count) {
 .close-btn:hover {
   background: var(--primary-red-dark);
   transform: scale(1.1);
+}
+
+/* 标签页 */
+.shop-tabs {
+  display: flex;
+  padding: 10px 15px;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 2px solid var(--light-wood);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 20px;
+  font-size: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--light-wood);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  border-color: var(--gold);
+  color: var(--text-light);
+}
+
+.tab-btn.active {
+  background: linear-gradient(180deg, var(--gold) 0%, #c9a227 100%);
+  border-color: var(--gold);
+  color: #1a0f0a;
+  font-weight: bold;
 }
 
 .shop-content {
@@ -317,5 +379,106 @@ function handleBuy(item, count) {
   border-color: #888;
   color: #aaa;
   cursor: not-allowed;
+}
+
+/* 设备列表 */
+.equipment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.equipment-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--light-wood);
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.equipment-item:hover {
+  border-color: var(--gold);
+}
+
+.equipment-item.owned {
+  opacity: 0.6;
+  border-color: var(--success-green);
+}
+
+.equipment-icon {
+  width: 64px;
+  height: 64px;
+  font-size: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--light-wood);
+  border-radius: 10px;
+}
+
+.equipment-img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+}
+
+.equipment-info {
+  flex: 1;
+}
+
+.equipment-name {
+  font-size: 16px;
+  color: var(--gold);
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.equipment-desc {
+  font-size: 13px;
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+
+.equipment-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.equipment-stats span {
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.equipment-buy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.equipment-price {
+  font-size: 16px;
+  color: var(--success-green);
+  font-weight: bold;
+}
+
+.buy-btn.owned {
+  background: var(--success-green);
+  border-color: var(--success-green);
+  color: #fff;
+}
+
+.no-equipment {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px;
+  font-size: 16px;
 }
 </style>

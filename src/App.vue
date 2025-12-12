@@ -5,7 +5,7 @@
  *
  * 使用现代化游戏架构
  */
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, provide } from 'vue'
 import CustomerList from './components/CustomerList.vue'
 import SoundPanel from './components/SoundPanel.vue'
 import UpgradePanel from './components/UpgradePanel.vue'
@@ -26,6 +26,7 @@ import SeasoningsSection from './components/SeasoningsSection.vue'
 
 // 导入游戏核心
 import { useGame, useDragDrop, useCooking } from './game'
+import { usePlates } from './game/composables/usePlates'
 import { useGameStore } from './game/stores/gameStore'
 import { rawIngredients, preparedIngredients, seasonings } from './game/data/ingredients'
 import { appliances } from './game/data/appliances'
@@ -100,6 +101,11 @@ const userIngredientList = computed(() => {
   return ingredientList.value.filter(ing => (inventory[ing.id] || 0) > 0)
 })
 
+// 已拥有的厨具ID列表
+const ownedApplianceIds = computed(() => {
+  return Object.keys(applianceStates)
+})
+
 // ========== UI 状态 ==========
 const showSoundPanel = ref(false)
 const showUpgradePanel = ref(false)
@@ -112,18 +118,24 @@ const showCombo = computed(() => state.combo >= 2)
 // 调试弹窗
 const showDebugModal = ref(false)
 
-// 盘子数据结构 - 每个盘子只能装一个成品菜
-// status: 'empty' | 'hasDish' | 'served'
-const plates = ref([])
-
-// 初始化盘子数组
-function initPlates() {
-  plates.value = Array.from({ length: userData.plates }, () => ({
-    status: 'empty',
-    dish: null
-  }))
-}
-initPlates()
+// ========== 初始化盘子系统 ==========
+const {
+  plates,
+  initPlates,
+  handlePlateWash,
+  handlePlateClear,
+  addDishToPlate,
+  addItemToPlate,
+  handleServeDish,
+  handlePlateDropOnAppliance
+} = usePlates({
+  userData,
+  randomEventsSystem,
+  showToast,
+  serveCustomer,
+  customers,
+  applianceStates
+})
 
 // 调料撒事件处理
 function handleSeasoningDrop(seasoning) {
@@ -222,189 +234,17 @@ const {
   isShopOpen: () => state.isOpen
 })
 
-// 包装 handleApplianceDrop，传入 handlePlateDropOnAppliance 回调
+// ========== 提供给子组件的方法 ==========
+provide('clickAppliance', clickAppliance)
+provide('repairAppliance', (applianceId) => randomEventsSystem.repairAppliance(applianceId))
+provide('handleSpecialAction', (applianceId) => randomEventsSystem.handleSpecialEventAction(applianceId))
+provide('getEventConfig', (applianceId) => randomEventsSystem.getApplianceEventConfig(applianceId))
+
+// 包装 handleApplianceDrop，传入盘子装盘回调
 function handleApplianceDrop(e, applianceId) {
-  _handleApplianceDrop(e, applianceId, handlePlateDropOnAppliance)
-}
-
-// 盘子拖放到厨具上（装盘）
-function handlePlateDropOnAppliance(applianceId) {
-  if (draggingPlateIndex.value < 0) return
-  
-  const plate = plates.value[draggingPlateIndex.value]
-  if (!plate || plate.status !== 'empty') {
-    showToast('❌ 盘子已有菜品', 'error')
-    return
-  }
-  
-  const appliance = applianceStates[applianceId]
-  if (!appliance || appliance.status !== 'done') {
-    showToast('❌ 厨具还没做好', 'error')
-    return
-  }
-  
-  // 获取成品
-  const store = useGameStore()
-  const dish = store.serveDish(applianceId)
-  if (!dish) {
-    showToast('❌ 无法装盘', 'error')
-    return
-  }
-  
-  // 装盘
-  addDishToPlate(draggingPlateIndex.value, dish)
-  showToast(`✅ 将 ${dish.name} 装盘`, 'success')
-}
-
-// 清空指定盘子
-function handlePlateClear(plateIndex) {
-  const plate = plates.value[plateIndex]
-  if (!plate || plate.status === 'empty') return
-  
-  // 直接丢弃盘中的菜品
-  plates.value[plateIndex] = {
-    status: 'empty',
-    dish: null
-  }
-  showToast('🗑️ 已清空盘子', 'success')
-}
-
-// ========== 盘子清洗系统 ==========
-
-let plateWashTimer = null
-
-// 启动清洗循环
-function startWashingLoop() {
-  if (plateWashTimer) return  // 已在运行
-  plateWashTimer = setInterval(() => {
-    updatePlateWashing()
-  }, 100)
-}
-
-// 停止清洗循环
-function stopWashingLoop() {
-  if (plateWashTimer) {
-    clearInterval(plateWashTimer)
-    plateWashTimer = null
-  }
-}
-
-// 开始清洗盘子
-function handlePlateWash(plateIndex) {
-  const plate = plates.value[plateIndex]
-  if (!plate || plate.status !== 'dirty') return
-  
-  // 开始清洗
-  plates.value[plateIndex] = {
-    status: 'washing',
-    dish: null,
-    washProgress: 0,
-    washStartTime: Date.now(),
-    washDuration: 2000  // 2秒清洗时间
-  }
-  
-  // 启动清洗循环
-  startWashingLoop()
-}
-
-// 更新盘子清洗进度
-function updatePlateWashing() {
-  let hasWashingPlates = false
-  
-  plates.value.forEach((plate, index) => {
-    if (plate.status === 'washing') {
-      hasWashingPlates = true
-      const elapsed = Date.now() - plate.washStartTime
-      const progress = Math.min(100, (elapsed / plate.washDuration) * 100)
-      plate.washProgress = progress
-      
-      // 检查是否触发盘子摔碎事件（每次更新都有机会触发）
-      if (randomEventsSystem.checkPlateBreak(index)) {
-        // 盘子碎了，移除这个盘子
-        plates.value.splice(index, 1)
-        // 减少用户盘子数量
-        if (userData.plates > 0) {
-          userData.plates--
-        }
-        return
-      }
-      
-      // 清洗完成
-      if (progress >= 100) {
-        plates.value[index] = {
-          status: 'empty',
-          dish: null
-        }
-      }
-    }
+  _handleApplianceDrop(e, applianceId, (appId) => {
+    handlePlateDropOnAppliance(appId, draggingPlateIndex.value)
   })
-  
-  // 没有盘子在清洗，停止循环
-  if (!hasWashingPlates) {
-    stopWashingLoop()
-  }
-}
-
-// 组件卸载时清理
-onUnmounted(() => {
-  stopWashingLoop()
-})
-
-// 上菜给顾客
-function handleServeDish(plateIndex, customer) {
-  const plate = plates.value[plateIndex]
-  if (!plate || plate.status !== 'hasDish' || !plate.dish) {
-    showToast('❌ 盘子里没有菜品', 'error')
-    return
-  }
-  
-  // 检查是否触发菜撒事件
-  if (randomEventsSystem.checkPlateSpill(plate, plateIndex)) {
-    // 菜撒了，盘子变为待清洗状态
-    plates.value[plateIndex] = {
-      status: 'dirty',
-      dish: null
-    }
-    return
-  }
-  
-  // 找到顾客的索引
-  const customerIndex = customers.value.findIndex(c => c.id === customer.id)
-  if (customerIndex < 0) {
-    showToast('❌ 顾客已离开', 'error')
-    return
-  }
-  
-  // 尝试上菜
-  const result = serveCustomer(customerIndex, plate.dish.id)
-  if (result) {
-    // 上菜成功，盘子变为待清洗状态
-    plates.value[plateIndex] = {
-      status: 'dirty',
-      dish: null
-    }
-  }
-}
-
-// 向盘子添加成品菜
-function addDishToPlate(plateIndex, dish) {
-  const plate = plates.value[plateIndex]
-  if (!plate || plate.status !== 'empty') return false
-  
-  plate.status = 'hasDish'
-  plate.dish = {
-    id: dish.id,
-    name: dish.name,
-    icon: dish.icon,
-    image: dish.image
-  }
-  
-  return true
-}
-
-// 向盘子添加食材（兑容旧接口，现在只接受成品菜）
-function addItemToPlate(plateIndex, item) {
-  return addDishToPlate(plateIndex, item)
 }
 
 // ========== 厨具网格布局计算 ==========
@@ -475,6 +315,35 @@ function handleBuyIngredient(ingredientId, count, price) {
     showToast(`购买了 ${count} 个 ${info?.name || ingredientId}`, 'money')
   } else {
     showToast('金币不足！', 'error')
+  }
+}
+
+// 购买设备
+function handleBuyAppliance(applianceId, price) {
+  // 检查是否已拥有
+  if (applianceStates[applianceId]) {
+    showToast('已经拥有该设备！', 'error')
+    return
+  }
+  // 检查金币
+  if (state.money < price) {
+    showToast('金币不足！', 'error')
+    return
+  }
+  // 扣除金币
+  state.money -= price
+  // 添加厨具
+  const applianceData = appliances[applianceId]
+  if (applianceData) {
+    applianceStates[applianceId] = {
+      ...applianceData,
+      items: [],
+      status: 'idle',
+      progress: 0,
+      resultDish: null,
+      burnProgress: 0
+    }
+    showToast(`购买了 ${applianceData.name}`, 'money')
   }
 }
 
@@ -571,22 +440,7 @@ function handleResetCooldowns() {
   showToast('[调试] 所有事件冷却已重置', 'success')
 }
 
-// 点击厨具
-function handleApplianceClick(applianceId) {
-  clickAppliance(applianceId)
-}
-
-// 修理厨具
-function handleRepairAppliance(applianceId) {
-  randomEventsSystem.repairAppliance(applianceId)
-}
-
-// 处理专属事件动作
-function handleSpecialAction(applianceId) {
-  randomEventsSystem.handleSpecialEventAction(applianceId)
-}
-
-// 获取厨具事件配置
+// 获取厨具事件配置（保留给其他地方使用）
 function getEventConfig(applianceId) {
   return randomEventsSystem.getApplianceEventConfig(applianceId)
 }
@@ -771,14 +625,10 @@ function getEventConfig(applianceId) {
                       @dragover="handleApplianceDragOver"
                       @dragleave="handleApplianceDragLeave"
                       @drop="handleApplianceDrop"
-                      @click="handleApplianceClick"
                       @start-cooking="handleStartCooking"
                       @clear="handleClearAppliance"
                       @ingredient-drag-start="handleApplianceIngredientDragStart"
                       @ingredient-drag-end="handleApplianceIngredientDragEnd"
-                      @repair="handleRepairAppliance"
-                      @special-action="handleSpecialAction"
-                      :event-config="getEventConfig(app.id)"
                     />
                   </div>
                 </div>
@@ -807,9 +657,11 @@ function getEventConfig(applianceId) {
     <ShopPanel 
       :visible="showShopPanel" 
       :money="state.money" 
-      :inventory="inventory" 
+      :inventory="inventory"
+      :owned-appliances="ownedApplianceIds"
       @close="showShopPanel = false" 
-      @buy="handleBuyIngredient" 
+      @buy="handleBuyIngredient"
+      @buy-appliance="handleBuyAppliance"
     />
     
     <!-- 小偷事件弹窗 -->

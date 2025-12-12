@@ -2,9 +2,15 @@
 /**
  * 单个厨具组件
  */
-import { computed, ref } from 'vue'
+import { computed, ref, inject } from 'vue'
 import { appliances } from '../game/data/appliances'
 import { preparedIngredients } from '../game/data/ingredients'
+
+// 注入父组件提供的方法
+const clickAppliance = inject('clickAppliance')
+const repairAppliance = inject('repairAppliance')
+const handleSpecialAction = inject('handleSpecialAction')
+const getEventConfig = inject('getEventConfig')
 
 const props = defineProps({
   applianceId: { type: String, required: true },
@@ -17,11 +23,13 @@ const props = defineProps({
   draggingPlate: { type: Boolean, default: false },
   allowedAppliances: { type: Array, default: () => [] },
   canProcess: { type: Boolean, default: false },
-  eventConfig: { type: Object, default: null },  // 专属事件配置
   isPowerOutage: { type: Boolean, default: false }  // 停电状态
 })
 
-const emit = defineEmits(['dragover', 'dragleave', 'drop', 'start-cooking', 'clear', 'click', 'ingredient-drag-start', 'ingredient-drag-end', 'repair', 'special-action'])
+const emit = defineEmits(['dragover', 'dragleave', 'drop', 'start-cooking', 'clear', 'ingredient-drag-start', 'ingredient-drag-end'])
+
+// 通过 inject 获取事件配置
+const eventConfig = computed(() => getEventConfig?.(props.applianceId))
 
 // 获取厨具数据
 const applianceData = computed(() => appliances[props.applianceId])
@@ -129,7 +137,7 @@ function getDisplayName() {
   if (appliance.status === 'broken') return '🔧 损坏了!'
   if (appliance.status === 'repairing') return '🔧 修理中...'
   // 专属事件状态
-  if (props.eventConfig) return props.eventConfig.icon + ' ' + props.eventConfig.name
+  if (eventConfig.value) return eventConfig.value.icon + ' ' + eventConfig.value.name
   if (appliance.status === 'processing') return '处理中...'
   if (appliance.status === 'done') {
     // 显示成品菜名称
@@ -155,8 +163,18 @@ function handleDrop(e) {
 
 function handleClick() {
   if (!props.locked) {
-    emit('click', props.applianceId)
+    clickAppliance?.(props.applianceId)
   }
+}
+
+// 修理厨具
+function handleRepair() {
+  repairAppliance?.(props.applianceId)
+}
+
+// 处理专属事件动作
+function handleSpecialEventAction() {
+  handleSpecialAction?.(props.applianceId)
 }
 
 function handleStartCooking() {
@@ -448,7 +466,7 @@ function handleSlotDragEnd(e) {
       </div>
       <div class="broken-info">
         <span class="broken-text">损坏了!</span>
-        <button class="repair-btn" @click.stop="emit('repair', applianceId)">
+        <button class="repair-btn" @click.stop="handleRepair">
           🛠️ 修理
         </button>
       </div>
@@ -474,7 +492,7 @@ function handleSlotDragEnd(e) {
       </div>
       <div class="special-event-info">
         <span class="special-event-text">{{ eventConfig.name }}</span>
-        <button class="special-event-btn" @click.stop="emit('special-action', applianceId)">
+        <button class="special-event-btn" @click.stop="handleSpecialEventAction">
           {{ eventConfig.actionText }}
           <span v-if="eventConfig.actionCost" class="action-cost">💰{{ eventConfig.actionCost }}</span>
         </button>
